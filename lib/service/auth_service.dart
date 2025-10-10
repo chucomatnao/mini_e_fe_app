@@ -1,25 +1,93 @@
+// File chứa các dịch vụ gọi API liên quan đến auth
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
-import '../utils/app_constants.dart';  // Nếu có
+import '../utils/app_constants.dart';
 
 class AuthService {
-  Future<UserModel> login(String email, String password) async {
+  // Hàm đăng ký người dùng
+  Future<UserModel> register(String name, String email, String password, String confirmPassword) async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.registerEndpoint}');
+    final body = jsonEncode({
+      'name': name,
+      'email': email,
+      'password': password,
+      'confirmPassword': confirmPassword,
+    });
+
     final response = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/auth/login'),
+      url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+      body: body,
     );
-    if (response.statusCode == 200) {
+
+    if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setString('auth_token', data['accessToken']);
-      return UserModel.fromJson(data['user']);
+      if (data['data']?['access_token'] != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', data['data']['access_token']);
+      }
+      return UserModel.fromJson(data);
     } else {
-      throw Exception('Login failed');
+      final error = jsonDecode(response.body)['message'] ?? 'Đăng ký thất bại';
+      throw Exception(error);
     }
   }
 
-// Thêm register, forgot password
+  // Hàm đăng nhập
+  Future<UserModel> login(String email, String password) async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.loginEndpoint}');
+    final body = jsonEncode({
+      'email': email,
+      'password': password,
+    });
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('access_token', data['data']['access_token']);
+      await prefs.setString('refresh_token', data['data']['refresh_token']);
+      return UserModel.fromJson(data);
+    } else {
+      final error = jsonDecode(response.body)['message'] ?? 'Đăng nhập thất bại';
+      throw Exception(error);
+    }
+  }
+
+  // Hàm quên mật khẩu
+  Future<String> forgotPassword(String email) async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.forgotPasswordEndpoint}');
+    final body = jsonEncode({'email': email});
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['data']['message'] ?? 'Yêu cầu quên mật khẩu đã được gửi!';
+    } else {
+      final error = jsonDecode(response.body)['message'] ?? 'Yêu cầu thất bại';
+      throw Exception(error);
+    }
+  }
+
+  // Hàm lấy headers với token
+  Future<Map<String, String>> getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token') ?? '';
+    return {
+      'Content-Type': 'application/json',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 }
