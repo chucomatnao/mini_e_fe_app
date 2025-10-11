@@ -18,30 +18,32 @@ class AuthProvider with ChangeNotifier {
   // Hàm đăng ký
   Future<void> register(String name, String email, String password, String confirmPassword) async {
     _isLoading = true;
-    _errorMessage = null;
+    _errorMessage = null; // Xóa lỗi cũ trước khi thử
     notifyListeners();
     try {
       _user = await _authService.register(name, email, password, confirmPassword);
+      // Nếu thành công, xóa lỗi và navigate (nếu cần)
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString(); // Lưu lỗi từ exception
     } finally {
       _isLoading = false;
-      notifyListeners();
+      notifyListeners(); // Cập nhật UI với lỗi hoặc trạng thái mới
     }
   }
 
   // Hàm đăng nhập
   Future<void> login(String email, String password) async {
     _isLoading = true;
-    _errorMessage = null;
+    _errorMessage = null; // Xóa lỗi cũ trước khi thử
     notifyListeners();
     try {
       _user = await _authService.login(email, password);
+      // Nếu thành công, xóa lỗi và navigate (nếu cần)
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString(); // Lưu lỗi từ exception
     } finally {
       _isLoading = false;
-      notifyListeners();
+      notifyListeners(); // Cập nhật UI với lỗi hoặc trạng thái mới
     }
   }
 
@@ -62,13 +64,20 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-
   // Hàm đăng xuất
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    _user = null;
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+    try {
+      await _authService.logout(); // Gọi API và xóa token
+      _user = null; // Xóa user state
+    } catch (e) {
+      _errorMessage = e.toString(); // Lưu lỗi nếu API thất bại
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Key để truy cập context toàn cục

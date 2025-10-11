@@ -26,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
           key: _formKey,
           child: Column(
             children: [
+
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
@@ -33,9 +34,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Mật khẩu'),
+                decoration: InputDecoration(
+                  labelText: 'Mật khẩu',
+                  errorText: authProvider.errorMessage, // Hiển thị lỗi từ backend
+                ),
                 obscureText: true,
-                validator: (value) => value!.isEmpty ? 'Mật khẩu không được để trống' : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Mật khẩu không được để trống';
+                  if (value.length < 8) return 'Mật khẩu phải ít nhất 8 ký tự'; // Tùy thuộc yêu cầu backend
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
               CustomButton(
@@ -49,8 +57,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ).then((_) {
                       if (authProvider.user != null) {
                         Navigator.pushReplacementNamed(context, '/home');
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authProvider.errorMessage ?? 'Lỗi không xác định')));
+                      } else if (authProvider.errorMessage != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(authProvider.errorMessage!)),
+                        );
                       }
                     });
                   }

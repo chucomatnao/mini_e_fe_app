@@ -9,12 +9,15 @@ class AuthService {
   // Hàm đăng ký người dùng
   Future<UserModel> register(String name, String email, String password, String confirmPassword) async {
     final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.registerEndpoint}');
+    print('DEBUG: Sending POST to $url');  // Log URL
+
     final body = jsonEncode({
       'name': name,
       'email': email,
       'password': password,
       'confirmPassword': confirmPassword,
     });
+    print('DEBUG: Body: $body');  // Log body
 
     final response = await http.post(
       url,
@@ -22,18 +25,19 @@ class AuthService {
       body: body,
     );
 
+    print('DEBUG: Status: ${response.statusCode}');  // Log status
+    print('DEBUG: Response: ${response.body}');  // Log response
+
     if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
-      if (data['data']?['access_token'] != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('access_token', data['data']['access_token']);
-      }
-      return UserModel.fromJson(data);
+      // Chuyển JSON thành model (ví dụ)
+      return UserModel.fromJson(data['user']);
     } else {
       final error = jsonDecode(response.body)['message'] ?? 'Đăng ký thất bại';
-      throw Exception(error);
+      throw Exception('Status: ${response.statusCode} - $error');
     }
   }
+
 
   // Hàm đăng nhập
   Future<UserModel> login(String email, String password) async {
@@ -80,7 +84,34 @@ class AuthService {
       throw Exception(error);
     }
   }
+  // Hàm đăng xuất
+  Future<bool> logout() async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.logoutEndpoint}');
+    print('DEBUG: Sending POST to $url');  // Log URL
 
+    // Lấy headers với token (nếu có) để xác thực
+    final headers = await getHeaders();
+    final response = await http.post(
+      url,
+      headers: headers,
+      // Không cần body, theo auth.controller.ts
+    );
+
+    print('DEBUG: Status: ${response.statusCode}');  // Log status
+    print('DEBUG: Response: ${response.body}');  // Log response
+
+    // Luôn xóa token local, dù API thành công hay không
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Xóa tất cả token (access, refresh)
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['data']['loggedOut'] ?? true; // Trả về true nếu loggedOut: true
+    } else {
+      final error = jsonDecode(response.body)['message'] ?? 'Đăng xuất thất bại';
+      throw Exception('Status: ${response.statusCode} - $error');
+    }
+  }
   // Hàm lấy headers với token
   Future<Map<String, String>> getHeaders() async {
     final prefs = await SharedPreferences.getInstance();

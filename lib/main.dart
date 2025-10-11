@@ -7,6 +7,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/product_list_screen.dart';
 import 'screens/forgot_password_screen.dart';
+import 'screens/logout_screen.dart';
 
 void main() {
   runApp(MyApp());
@@ -29,8 +30,11 @@ class MyApp extends StatelessWidget {
           '/register': (context) => RegisterScreen(),
           '/home': (context) => ProductListScreen(),
           '/forgot-password': (context) => ForgotPasswordScreen(),
+          '/logout': (context) => LogoutScreen(),
         },
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
+
 }
