@@ -1,28 +1,39 @@
-// File chứa model cho dữ liệu người dùng từ API
 class UserModel {
-  final String id;
-  final String name; // Tên người dùng từ register DTO
-  final String email;
-  final String role; // Vai trò người dùng (từ backend)
-  final bool isVerified;
+  final int? id;
+  final String? name;
+  final String? email;
+  final String? role;
+  final bool? isVerified;  // Đảm bảo type bool
 
   UserModel({
-    required this.id,
-    required this.name,
-    required this.email,
-    required this.role,
-    required this.isVerified,
+    this.id,
+    this.name,
+    this.email,
+    this.role,
+    this.isVerified,
   });
 
-  // Hàm chuyển từ JSON sang UserModel
+  // SỬA: PARSE JSON ĐÚNG CẤU TRÚC BACKEND
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] ?? json; // Xử lý trường hợp backend trả {success: true, data: user}
+    print('DEBUG: fromJson raw: $json');  // Log để debug
+
     return UserModel(
-      id: data['id']?.toString() ?? '',
-      name: data['name'] ?? '',
-      email: data['email'] ?? '',
-      role: data['role'] ?? 'USER',
-      isVerified: data['isVerified'] ?? false,
+      id: json['id'],
+      name: json['name'],
+      email: json['email'],
+      role: json['role'],
+      // SỬA: LẤY isVerified TỪ ĐÚNG VỊ TRÍ
+      isVerified: json['isVerified'] ?? false,  // Từ user object
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'role': role,
+      'isVerified': isVerified,
+    };
   }
 }

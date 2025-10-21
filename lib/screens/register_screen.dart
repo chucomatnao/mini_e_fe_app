@@ -28,16 +28,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Hiển thị thông báo lỗi nếu có
-              if (authProvider.errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10.0),
-                  child: Text(
-                    authProvider.errorMessage!,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Tên'),
@@ -55,10 +45,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Mật khẩu không được để trống';
                   if (value.length < 8) return 'Mật khẩu phải ít nhất 8 ký tự';
-                  if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$')
-                      .hasMatch(value)) {
-                    return 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt';
-                  }
                   return null;
                 },
               ),
@@ -66,7 +52,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _confirmPasswordController,
                 decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu'),
                 obscureText: true,
-                validator: (value) => value != _passwordController.text ? 'Mật khẩu không khớp' : null,
+                validator: (value) =>
+                value != _passwordController.text ? 'Mật khẩu không khớp' : null,
               ),
               const SizedBox(height: 20),
               CustomButton(
@@ -81,7 +68,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       _confirmPasswordController.text,
                     ).then((_) {
                       if (authProvider.user != null) {
-                        Navigator.pushReplacementNamed(context, '/login');
+                        // Đăng ký thành công, chuyển sang màn hình nhập OTP
+                        Navigator.pushNamed(context, '/verify-account');
                       } else if (authProvider.errorMessage != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(authProvider.errorMessage!)),
