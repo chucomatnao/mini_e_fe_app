@@ -38,9 +38,9 @@ class ProfileScreen extends StatelessWidget {
           controller: controller,
           decoration: InputDecoration(
             hintText: 'Nhập $title mới',
-            errorText: auth.errorMessage, // Hiển thị lỗi từ AuthProvider
+            errorText: auth.errorMessage,
           ),
-          enabled: !auth.isLoading, // Vô hiệu hóa khi đang loading
+          enabled: !auth.isLoading,
         ),
         actions: [
           TextButton(
@@ -49,22 +49,18 @@ class ProfileScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: auth.isLoading
-                ? null // Vô hiệu hóa nút khi đang loading
+                ? null
                 : () {
               final newValue = controller.text.trim();
               if (newValue.isEmpty && title != 'Số điện thoại') {
                 _showSnackBar(context, '$title không được để trống', isError: true);
                 return;
               }
-              onSave(newValue); // Gọi hàm lưu
+              onSave(newValue);
               Navigator.pop(ctx);
             },
             child: auth.isLoading
-                ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('Lưu'),
           ),
         ],
@@ -109,7 +105,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  /// Widget menu item cho các chức năng khác (ngân hàng, địa chỉ, v.v.)
+  /// Widget menu item cho các chức năng khác
   Widget _menuTile(
       BuildContext context, {
         required IconData icon,
@@ -129,12 +125,10 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lấy AuthProvider để truy cập user và trạng thái
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.user;
 
-    // Kiểm tra nếu chưa đăng nhập hoặc đang tải
-    if (user == null || auth.isLoading && user.id == null) {
+    if (user == null || (auth.isLoading && user.id == null)) {
       return Scaffold(
         body: Center(
           child: auth.isLoading
@@ -149,6 +143,7 @@ class ProfileScreen extends StatelessWidget {
         title: const Text('Hồ sơ của tôi'),
         centerTitle: true,
         backgroundColor: const Color(0xFF0D6EFD),
+        foregroundColor: Colors.white,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -164,11 +159,7 @@ class ProfileScreen extends StatelessWidget {
                     backgroundColor: const Color(0xFF0872FF),
                     child: Text(
                       user.name?.isNotEmpty == true ? user.name![0].toUpperCase() : 'U',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -210,23 +201,19 @@ class ProfileScreen extends StatelessWidget {
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const Divider(),
-                      // Sửa Tên
                       _infoRow(context, 'Tên đăng nhập', user.name, () {
                         _showEditDialog(context, 'Tên', user.name ?? '', (newValue) {
                           auth.updateProfile({'name': newValue});
                         });
                       }),
-                      // Email không cho sửa
                       _infoRow(context, 'Email', user.email, () {
                         _showSnackBar(context, 'Email không thể thay đổi', isError: true);
                       }),
-                      // Sửa Số điện thoại
                       _infoRow(context, 'Số điện thoại', user.phone, () {
                         _showEditDialog(context, 'Số điện thoại', user.phone ?? '', (newValue) {
                           auth.updateProfile({'phone': newValue.isEmpty ? null : newValue});
                         });
                       }),
-                      // Sửa Ngày sinh
                       _infoRow(context, 'Ngày sinh', user.birthday, () {
                         showDatePicker(
                           context: context,
@@ -240,7 +227,6 @@ class ProfileScreen extends StatelessWidget {
                           }
                         });
                       }),
-                      // Sửa Giới tính
                       _infoRow(context, 'Giới tính', user.gender == 'MALE' ? 'Nam' : user.gender == 'FEMALE' ? 'Nữ' : user.gender == 'OTHER' ? 'Khác' : null, () {
                         showModalBottomSheet(
                           context: context,
@@ -309,11 +295,15 @@ class ProfileScreen extends StatelessWidget {
                 title: 'Voucher',
                 onTap: () => _showSnackBar(context, 'Chức năng Voucher sắp có!'),
               ),
+
+              // ĐÃ SỬA: CHUYỂN TRANG QUẢN LÝ SHOP
               _menuTile(
                 context,
                 icon: Icons.store_mall_directory_outlined,
                 title: 'Quản lý shop',
-                onTap: () => _showSnackBar(context, 'Chức năng Quản lý shop sắp có!'),
+                onTap: () {
+                  Navigator.pushNamed(context, '/shop-management');
+                },
               ),
 
               const SizedBox(height: 16),
