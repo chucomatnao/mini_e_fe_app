@@ -31,19 +31,10 @@ class AuthProvider with ChangeNotifier {
   //                          GETTERS (Public Access)
   // ════════════════════════════════════════════════════════════════════════
 
-  /// Lấy user hiện tại
   UserModel? get user => _user;
-
-  /// Lấy trạng thái loading
   bool get isLoading => _isLoading;
-
-  /// Lấy error message
   String? get errorMessage => _errorMessage;
-
-  /// Lấy trạng thái verified
   bool get isVerified => _isVerified;
-
-  /// Lấy email reset (cho màn hình OTP)
   String? get resetEmail => _resetEmail;
 
   // ════════════════════════════════════════════════════════════════════════
@@ -60,28 +51,27 @@ class AuthProvider with ChangeNotifier {
   //                          HELPER: PARSE ERROR MESSAGE
   // ════════════════════════════════════════════════════════════════════════
 
-  /// SỬA: Hàm parse error - CHỈ LẤY MESSAGE SẠCH
+  /// Chuyển lỗi API thành thông báo người dùng dễ hiểu
   String _parseErrorMessage(dynamic error) {
     String errorStr = error.toString();
 
-    // BỎ "Exception: "
+    // Bỏ "Exception: "
     errorStr = errorStr.replaceFirst('Exception: ', '');
 
-    // BỎ "Status: XXX - "
+    // Bỏ "Status: XXX - "
     if (errorStr.contains('Status: ')) {
       errorStr = errorStr.split('Status: ')[1].split(' - ')[1];
     }
 
-    // BỎ " - " thừa
+    // Bỏ " - " thừa
     errorStr = errorStr.replaceAll(' - ', ' ');
 
     // Custom messages
-    if (errorStr.contains('401')) {
-      return 'Email hoặc mật khẩu không đúng';
-    }
-    if (errorStr.contains('400')) {
-      return errorStr.contains('Email') ? 'Email không hợp lệ' : errorStr;
-    }
+    if (errorStr.contains('401')) return 'Email hoặc mật khẩu không đúng';
+    if (errorStr.contains('400')) return errorStr.contains('Email') ? 'Email không hợp lệ' : 'Dữ liệu không hợp lệ';
+    if (errorStr.contains('404')) return 'Không tìm thấy tài khoản';
+    if (errorStr.contains('429')) return 'Thử lại quá nhiều lần. Vui lòng đợi.';
+    if (errorStr.contains('OTP')) return 'Mã OTP không đúng hoặc đã hết hạn';
 
     return errorStr.isEmpty ? 'Có lỗi xảy ra' : errorStr;
   }
@@ -93,36 +83,21 @@ class AuthProvider with ChangeNotifier {
       String name,
       String email,
       String password,
-      String confirmPassword
+      String confirmPassword,
       ) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
+    _startLoading();
     try {
       _user = await _authService.register(name, email, password, confirmPassword);
       _isVerified = _user?.isVerified ?? false;
 
       print('DEBUG: Register - user: $_user, isVerified: $_isVerified');
 
-      if (_user != null) {
-        await login(email, password);
-
-        if (!_isVerified) {
-          await requestVerify(email);
-          navigatorKey.currentState?.pushNamed('/verify-account');
-        } else {
-          navigatorKey.currentState?.pushReplacementNamed('/home');
-          _showWelcomeSnackBar(_user!.name ?? 'Người dùng');
-        }
-      }
+      // Tự động đăng nhập sau đăng ký
+      await login(email, password);
     } catch (e) {
-      // 👈 SỬA: DÙNG HELPER FUNCTION
-      _errorMessage = _parseErrorMessage(e);
-      print('DEBUG: Register error: $e');
+      _setError(e);
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _stopLoading();
     }
   }
 
@@ -130,78 +105,43 @@ class AuthProvider with ChangeNotifier {
   //                          2. LOGIN FUNCTION
   // ════════════════════════════════════════════════════════════════════════
   Future<void> login(String email, String password) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
+    _startLoading();
     try {
       _user = await _authService.login(email, password);
       _isVerified = _user?.isVerified ?? false;
 
-      print('DEBUG: Login success - user: $_user');
-      print('DEBUG: _user.isVerified: ${_user?.isVerified}');
-      print('DEBUG: _isVerified: $_isVerified');
+      print('DEBUG: Login success - user: $_user, isVerified: $_isVerified');
 
-      if (_user != null) {
-        final prefs = await SharedPreferences.getInstance();
-        final savedToken = prefs.getString('access_token');
-        print('DEBUG: Saved access_token: $savedToken');
-
-        if (!_isVerified) {
-          print('DEBUG: User chưa verified → Chuyển sang trang verify');
-          await requestVerify(email);
-          navigatorKey.currentState?.pushNamed('/verify-account');
-        } else {
-          print('DEBUG: User đã verified → Vào home + SnackBar chào mừng');
-          navigatorKey.currentState?.pushReplacementNamed('/home');
-          _showWelcomeSnackBar(_user!.name ?? 'Người dùng');
-        }
+      if (!_isVerified) {
+        await requestVerify(); // SỬA: Không cần email, lấy từ token
+        _navigateTo('/verify-account');
+      } else {
+        _navigateToHomeAndWelcome();
       }
     } catch (e) {
-      // 👈 SỬA: DÙNG HELPER FUNCTION
-      _errorMessage = _parseErrorMessage(e);
-      print('DEBUG: Login error: $e');
+      _setError(e);
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _stopLoading();
     }
   }
 
   // ════════════════════════════════════════════════════════════════════════
   //                          3. VERIFY OTP FUNCTION
   // ════════════════════════════════════════════════════════════════════════
-  Future<void> verifyAccount(String email, String otp) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
+  Future<void> verifyAccount(String otp) async { // SỬA: Bỏ email param
+    _startLoading();
     try {
-      _user = await _authService.verifyAccount('', otp);
+      _user = await _authService.verifyAccount(otp); // SỬA: Chỉ gửi otp
       _isVerified = true;
 
       print('DEBUG: Verify success - user verified!');
 
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-        const SnackBar(
-          content: Text('Xác thực tài khoản thành công! 🎉'),
-          backgroundColor: Colors.blue,
-          duration: Duration(seconds: 2),
-        ),
-      );
-
-      navigatorKey.currentState?.pushReplacementNamed('/home');
-
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _showWelcomeSnackBar(_user!.name ?? 'Người dùng');
-      });
-
+      _showSnackBar('Xác thực tài khoản thành công!', Colors.blue);
+      _navigateToHomeAndWelcome(delay: 500);
     } catch (e) {
-      // 👈 SỬA: DÙNG HELPER FUNCTION
-      _errorMessage = _parseErrorMessage(e);
-      print('DEBUG: Verify error: $e');
+      _setError(e);
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _stopLoading();
     }
   }
 
@@ -209,54 +149,19 @@ class AuthProvider with ChangeNotifier {
   //                          4. FORGOT PASSWORD
   // ════════════════════════════════════════════════════════════════════════
   Future<void> forgotPassword(String email) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    print('DEBUG: START forgotPassword - email: $email');
-
+    _startLoading();
     try {
       _resetEmail = email.trim();
-      print('DEBUG: SAVED _resetEmail: $_resetEmail');
-
       final message = await _authService.forgotPassword(email);
-      print('DEBUG: API SUCCESS - message: $message');
 
-      if (navigatorKey.currentContext != null) {
-        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        print('DEBUG: SHOW SNACKBAR');
-      }
-
-      print('DEBUG: NAVIGATE TO /reset-otp');
-      await Future.delayed(Duration(milliseconds: 500));
-
-      if (navigatorKey.currentState != null) {
-        navigatorKey.currentState!.pushNamed('/reset-otp');
-        print('DEBUG: NAVIGATION SUCCESS');
-      }
-
+      _showSnackBar(message, Colors.green);
+      await Future.delayed(const Duration(milliseconds: 500));
+      _navigateTo('/reset-otp');
     } catch (e) {
-      // 👈 SỬA: DÙNG HELPER FUNCTION
-      _errorMessage = _parseErrorMessage(e);
-      print('DEBUG: forgotPassword ERROR: $e');
-
-      if (navigatorKey.currentContext != null) {
-        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-          SnackBar(
-            content: Text(_errorMessage ?? 'Lỗi không xác định'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      _setError(e);
+      _showSnackBar(_errorMessage!, Colors.red);
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _stopLoading();
     }
   }
 
@@ -266,17 +171,12 @@ class AuthProvider with ChangeNotifier {
   Future<void> resetPassword(
       String otp,
       String newPassword,
-      String confirmPassword
+      String confirmPassword,
       ) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
+    _startLoading();
     try {
       if (newPassword != confirmPassword) {
-        // 👈 SỬA: VALIDATION MESSAGE SẠCH
-        _errorMessage = 'Mật khẩu xác nhận không khớp';
-        throw Exception(_errorMessage!);
+        throw Exception('Mật khẩu xác nhận không khớp');
       }
 
       final message = await _authService.resetPassword(
@@ -286,30 +186,15 @@ class AuthProvider with ChangeNotifier {
         confirmPassword,
       );
 
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.green,
-        ),
-      );
-
+      _showSnackBar(message, Colors.green);
+      _resetEmail = null;
       navigatorKey.currentState?.popUntil((route) => route.isFirst);
       navigatorKey.currentState?.pushReplacementNamed('/login');
-
-      _resetEmail = null;
-
     } catch (e) {
-      // 👈 SỬA: DÙNG HELPER FUNCTION
-      _errorMessage = _parseErrorMessage(e);
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-        SnackBar(
-          content: Text(_errorMessage!),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _setError(e);
+      _showSnackBar(_errorMessage!, Colors.red);
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _stopLoading();
     }
   }
 
@@ -317,65 +202,113 @@ class AuthProvider with ChangeNotifier {
   //                          6. LOGOUT FUNCTION
   // ════════════════════════════════════════════════════════════════════════
   Future<void> logout() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
+    _startLoading();
     try {
       await _authService.logout();
-
-      _user = null;
-      _isVerified = false;
-      _resetEmail = null;
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-
-      navigatorKey.currentState?.pushReplacementNamed('/login');
-
+      _clearUserData();
+      _navigateTo('/login');
     } catch (e) {
-      // 👈 SỬA: DÙNG HELPER FUNCTION
-      _errorMessage = _parseErrorMessage(e);
-      print('DEBUG: Logout error: $e');
+      _setError(e);
+      _clearUserData(); // Vẫn xóa dù API lỗi
+      _navigateTo('/login');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _stopLoading();
     }
   }
 
   // ════════════════════════════════════════════════════════════════════════
   //                          7. REQUEST VERIFY OTP
   // ════════════════════════════════════════════════════════════════════════
-  Future<void> requestVerify(String email) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
+  Future<void> requestVerify() async { // SỬA: Bỏ email param
+    _startLoading();
     try {
-      await _authService.requestVerify(email);
-      print('DEBUG: OTP sent to $email');
+      await _authService.requestVerify();
+      _showSnackBar('Mã OTP đã được gửi lại!', Colors.blue);
     } catch (e) {
-      // 👈 SỬA: DÙNG HELPER FUNCTION
-      _errorMessage = _parseErrorMessage(e);
-      print('DEBUG: Request verify error: $e');
+      _setError(e);
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _stopLoading();
     }
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  //                          8. PRIVATE HELPER
+  //                          8. UPDATE PROFILE FUNCTION
   // ════════════════════════════════════════════════════════════════════════
-  void _showWelcomeSnackBar(String userName) {
-    if (navigatorKey.currentContext != null) {
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+  Future<void> updateProfile(Map<String, dynamic> updates) async {
+    if (_user == null || _user!.id == null) {
+      _setError(Exception('Không tìm thấy thông tin người dùng'));
+      return;
+    }
+
+    _startLoading();
+    try {
+      final updatedUser = await _authService.updateProfile(_user!.id!, updates);
+      _user = updatedUser;
+      _isVerified = updatedUser.isVerified ?? false;
+
+      print('DEBUG: Profile updated successfully: $updatedUser');
+      _showSnackBar('Cập nhật thông tin thành công!', Colors.green);
+      notifyListeners();
+    } catch (e) {
+      _setError(e);
+      _showSnackBar(_errorMessage ?? 'Cập nhật thất bại', Colors.red);
+    } finally {
+      _stopLoading();
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //                          9. PRIVATE HELPERS
+  // ════════════════════════════════════════════════════════════════════════
+
+  void _startLoading() {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void _stopLoading() {
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  void _setError(dynamic error) {
+    _errorMessage = _parseErrorMessage(error);
+    print('DEBUG: Error → $_errorMessage');
+  }
+
+  void _clearUserData() {
+    _user = null;
+    _isVerified = false;
+    _resetEmail = null;
+    notifyListeners();
+  }
+
+  void _navigateTo(String route) {
+    navigatorKey.currentState?.pushReplacementNamed(route);
+  }
+
+  void _navigateToHomeAndWelcome({int delay = 0}) {
+    Future.delayed(Duration(milliseconds: delay), () {
+      _navigateTo('/home');
+      _showWelcomeSnackBar(_user!.name ?? 'Người dùng');
+    });
+  }
+
+  void _showSnackBar(String message, Color color) {
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Xin chào $userName! 👋'),
-          backgroundColor: Colors.green,
+          content: Text(message),
+          backgroundColor: color,
           duration: const Duration(seconds: 2),
         ),
       );
     }
+  }
+
+  void _showWelcomeSnackBar(String userName) {
+    _showSnackBar('Xin chào $userName!', Colors.green);
   }
 }

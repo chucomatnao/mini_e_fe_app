@@ -4,19 +4,67 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../utils/app_constants.dart';
 
+/// AuthService - Lớp trung gian gọi API xác thực và quản lý người dùng
+/// Tương tác với backend NestJS tại các endpoint: /auth/* và /users/*
+/// Quản lý token (access/refresh), xử lý lỗi, và trả về UserModel
 class AuthService {
-  // Hàm đăng ký người dùng
-  Future<UserModel> register(String name, String email, String password, String confirmPassword) async {
-    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.registerEndpoint}');
-    print('DEBUG: Sending POST to $url');  // Log URL để debug
+  // ────────────────────────────────────────────────────────────────────────
+  //                          1. HELPER METHODS (PRIVATE)
+  // ────────────────────────────────────────────────────────────────────────
 
+  /// Lấy access token từ SharedPreferences
+  /// Dùng cho các request cần xác thực (protected routes)
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+    print('DEBUG: _getToken() → $token');
+    return token;
+  }
+
+  /// Lưu access token và refresh token vào SharedPreferences
+  Future<void> _saveTokens(String accessToken, String? refreshToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('access_token', accessToken);
+    if (refreshToken != null) {
+      await prefs.setString('refresh_token', refreshToken);
+    }
+    print('DEBUG: Tokens saved: access_token=${accessToken.substring(0, 20)}...');
+  }
+
+  /// Xây dựng headers với token (nếu có)
+  Future<Map<String, String>> _getHeaders({bool withToken = true}) async {
+    final headers = {'Content-Type': 'application/json'};
+    if (withToken) {
+      final token = await _getToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+    print('DEBUG: Headers → $headers');
+    return headers;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //                          2. ĐĂNG KÝ (REGISTER)
+  // ────────────────────────────────────────────────────────────────────────
+  /// Gọi POST /auth/register
+  /// Backend trả: { success: true, data: { id, name, email, ... } }
+  Future<UserModel> register(
+      String name,
+      String email,
+      String password,
+      String confirmPassword,
+      ) async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.registerEndpoint}');
     final body = jsonEncode({
-      'name': name,
-      'email': email,
+      'name': name.trim(),
+      'email': email.trim().toLowerCase(),
       'password': password,
       'confirmPassword': confirmPassword,
     });
-    print('DEBUG: Body: $body');  // Log body để debug
+
+    print('DEBUG: [REGISTER] POST → $url');
+    print('DEBUG: Body → $body');
 
     final response = await http.post(
       url,
@@ -24,25 +72,98 @@ class AuthService {
       body: body,
     );
 
-    print('DEBUG: Status: ${response.statusCode}');  // Log status để debug
-    print('DEBUG: Response: ${response.body}');  // Log response để debug
+    print('DEBUG: Status: ${response.statusCode}');
+    print('DEBUG: Response: ${response.body}');
+
+    final data = jsonDecode(response.body);
 
     if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      // Sửa cách parse: data['data'] chứa thông tin user trực tiếp
-      return UserModel.fromJson(data['data']); // Thay vì data['user']
+      // Backend trả: { data: { id, name, email, role, isVerified } }
+      return UserModel.fromJson(data['data']);
     } else {
-      final error = jsonDecode(response.body)['message'] ?? 'Đăng ký thất bại';
+      final error = data['message'] ?? 'Đăng ký thất bại';
       throw Exception('Status: ${response.statusCode} - $error');
     }
   }
 
-  // Hàm gửi yêu cầu OTP (request-verify)
-  Future<void> requestVerify(String email) async {
+  // ────────────────────────────────────────────────────────────────────────
+  //                          3. ĐĂNG NHẬP (LOGIN)
+  // ────────────────────────────────────────────────────────────────────────
+  /// Gọi POST /auth/login
+  /// Backend trả: { data: { access_token, refresh_token, user: { ... } } }
+  Future<UserModel> login(String email, String password) async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.loginEndpoint}');
+    final body = jsonEncode({
+      'email': email.trim().toLowerCase(),
+      'password': password,
+    });
+
+    print('DEBUG: [LOGIN] POST → $url');
+    print('DEBUG: Body → $body');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    print('DEBUG: Status: ${response.statusCode}');
+    print('DEBUG: Response: ${response.body}');
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      final accessToken = data['data']['access_token'];
+      final refreshToken = data['data']['refresh_token'];
+      final userData = data['data']['user']; // Nested user object
+
+      await _saveTokens(accessToken, refreshToken);
+      print('DEBUG: User parsed → $userData');
+
+      return UserModel.fromJson(userData);
+    } else {
+      final error = data['message'] ?? 'Đăng nhập thất bại';
+      throw Exception('Status: ${response.statusCode} - $error');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //                          4. YÊU CẦU OTP XÁC THỰC (REQUEST VERIFY)
+  // ────────────────────────────────────────────────────────────────────────
+  /// Gọi POST /auth/request-verify
+  /// Cần token → userId được lấy từ JWT
+  Future<void> requestVerify() async {
     final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.requestVerifyEndpoint}');
-    final headers = await getHeaders(); // Lấy headers với token
-    print('DEBUG: requestVerify - Headers: $headers'); // Log headers
-    final body = jsonEncode({'email': email});
+    final headers = await _getHeaders();
+
+    print('DEBUG: [REQUEST VERIFY] POST → $url');
+    print('DEBUG: Headers → $headers');
+
+    final response = await http.post(url, headers: headers);
+
+    print('DEBUG: Status: ${response.statusCode}');
+    print('DEBUG: Response: ${response.body}');
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      final error = data['message'] ?? 'Gửi OTP thất bại';
+      throw Exception('Status: ${response.statusCode} - $error');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //                          5. XÁC MINH OTP (VERIFY ACCOUNT)
+  // ────────────────────────────────────────────────────────────────────────
+  /// Gọi POST /auth/verify-account
+  /// Body: { otp: "123456" }
+  Future<UserModel> verifyAccount(String otp) async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.verifyAccountEndpoint}');
+    final headers = await _getHeaders();
+    final body = jsonEncode({'otp': otp.trim()});
+
+    print('DEBUG: [VERIFY ACCOUNT] POST → $url');
+    print('DEBUG: Body → $body');
 
     final response = await http.post(
       url,
@@ -53,47 +174,27 @@ class AuthService {
     print('DEBUG: Status: ${response.statusCode}');
     print('DEBUG: Response: ${response.body}');
 
-    if (response.statusCode != 200) {
-      final error = jsonDecode(response.body)['message'] ?? 'Yêu cầu OTP thất bại';
-      throw Exception('Status: ${response.statusCode} - $error');
-    }
-  }
-
-  // Hàm xác minh OTP (verify-account)
-  Future<UserModel> verifyAccount(String email, String otp) async {  // Giữ param email để tương thích, nhưng không dùng trong body
-    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.verifyAccountEndpoint}');
-    print('DEBUG: Sending POST to $url'); // Log URL
-
-    // SỬA: Lấy headers với token (tương tự requestVerify), vì endpoint private cần Authorization
-    final headers = await getHeaders();
-    print('DEBUG: verifyAccount - Headers: $headers'); // Log headers để debug token
-
-    // SỬA: Chỉ gửi 'otp' trong body, vì backend DTO chỉ cần otp (userId lấy từ token). Bỏ email để tránh validate error
-    final body = jsonEncode({'otp': otp});
-    print('DEBUG: Body: $body'); // Log body
-
-    final response = await http.post(
-      url,
-      headers: headers,  // SỬA: Thêm headers với token
-      body: body,
-    );
-
-    print('DEBUG: Status: ${response.statusCode}'); // Log status
-    print('DEBUG: Response: ${response.body}'); // Log response
+    final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return UserModel.fromJson(data['data']); // Cập nhật user với isVerified: true
+      return UserModel.fromJson(data['data']);
     } else {
-      final error = jsonDecode(response.body)['message'] ?? 'Xác minh OTP thất bại';
+      final error = data['message'] ?? 'OTP không đúng';
       throw Exception('Status: ${response.statusCode} - $error');
     }
   }
 
-  // Hàm đăng nhập (giữ nguyên, vì đã lưu token đúng)
-  Future<UserModel> login(String email, String password) async {
-    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.loginEndpoint}');
-    final body = jsonEncode({'email': email, 'password': password});
+  // ────────────────────────────────────────────────────────────────────────
+  //                          6. QUÊN MẬT KHẨU (FORGOT PASSWORD)
+  // ────────────────────────────────────────────────────────────────────────
+  /// Gọi POST /auth/forgot-password
+  /// Trả về message + email (DEV mode có otp)
+  Future<String> forgotPassword(String email) async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.forgotPasswordEndpoint}');
+    final body = jsonEncode({'email': email.trim().toLowerCase()});
+
+    print('DEBUG: [FORGOT PASSWORD] POST → $url');
+    print('DEBUG: Body → $body');
 
     final response = await http.post(
       url,
@@ -104,72 +205,37 @@ class AuthService {
     print('DEBUG: Status: ${response.statusCode}');
     print('DEBUG: Response: ${response.body}');
 
+    final data = jsonDecode(response.body);
+
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      print('DEBUG: Parsed data: $data');
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('access_token', data['data']['access_token'] ?? '');
-      await prefs.setString('refresh_token', data['data']['refresh_token'] ?? '');
-
-      // SỬA: PARSE USER TỪ data['data']['user'] (KHÔNG PHẢI data['data'])
-      final userData = data['data']['user'];  // Lấy từ nested 'user'
-      print('DEBUG: User data: $userData');   // Log để kiểm tra
-
-      return UserModel.fromJson(userData);    // Truyền đúng object
+      final responseData = data['data'] as Map<String, dynamic>;
+      return 'Mã OTP đã được gửi đến ${responseData['email']}!';
     } else {
-      final error = jsonDecode(response.body)['message'] ?? 'Đăng nhập thất bại';
+      final error = data['message'] ?? 'Không tìm thấy email';
       throw Exception('Status: ${response.statusCode} - $error');
     }
   }
 
-  // Hàm quên mật khẩu
-  Future<String> forgotPassword(String email) async {
-    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.forgotPasswordEndpoint}');
-    final body = jsonEncode({'email': email.trim()});
-
-    print('DEBUG: ForgotPassword - URL: $url');
-    print('DEBUG: ForgotPassword - Body: $body');
-
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-
-    print('DEBUG: ForgotPassword - Status: ${response.statusCode}');
-    print('DEBUG: ForgotPassword - Response: ${response.body}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      print('DEBUG: Parsed data: $data');
-
-      // SỬA: BACKEND TRẢ {data: {email, otp, expiresAt}} → LẤY MESSAGE TỪ data['data']
-      final responseData = data['data'] as Map<String, dynamic>;
-      print('DEBUG: responseData: $responseData');
-
-      // TRẢ VỀ STRING MESSAGE (KHÔNG PHẢI Map)
-      return 'Mã OTP đã được gửi đến ${responseData['email']}!';
-
-    } else {
-      final error = jsonDecode(response.body)['message'] ?? 'Yêu cầu thất bại';
-      throw Exception(error);
-    }
-  }
-
-  //Hàm reset password với OTP
-  Future<String> resetPassword(String email, String otp, String newPassword, String confirmPassword) async {
+  // ────────────────────────────────────────────────────────────────────────
+  //                          7. ĐẶT LẠI MẬT KHẨU (RESET PASSWORD)
+  // ────────────────────────────────────────────────────────────────────────
+  /// Gọi POST /auth/reset-password
+  Future<String> resetPassword(
+      String email,
+      String otp,
+      String newPassword,
+      String confirmPassword,
+      ) async {
     final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.resetPasswordEndpoint}');
-
     final body = jsonEncode({
-      'email': email,
-      'otp': otp,
+      'email': email.trim().toLowerCase(),
+      'otp': otp.trim(),
       'password': newPassword,
       'confirmPassword': confirmPassword,
     });
 
-    print('DEBUG: ResetPassword - URL: $url');
-    print('DEBUG: ResetPassword - Body: $body');
+    print('DEBUG: [RESET PASSWORD] POST → $url');
+    print('DEBUG: Body → $body');
 
     final response = await http.post(
       url,
@@ -177,63 +243,90 @@ class AuthService {
       body: body,
     );
 
-    print('DEBUG: ResetPassword - Status: ${response.statusCode}');
-    print('DEBUG: ResetPassword - Response: ${response.body}');
+    print('DEBUG: Status: ${response.statusCode}');
+    print('DEBUG: Response: ${response.body}');
+
+    final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      print('DEBUG: ResetPassword Parsed: $data');
-
-      // SỬA: PARSE ĐÚNG - BACKEND TRẢ {data: {reset: true}}
-      final responseData = data['data'] as Map<String, dynamic>;
-      print('DEBUG: responseData: $responseData');
-
-      // TRẢ VỀ STRING MESSAGE
-      return 'Đổi mật khẩu thành công!';
-
+      return 'Đặt lại mật khẩu thành công!';
     } else {
-      final errorData = jsonDecode(response.body);
-      throw Exception(errorData['message'] ?? 'Đổi mật khẩu thất bại');
-    }
-  }
-
-  // Hàm đăng xuất (giữ nguyên)
-  Future<bool> logout() async {
-    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.logoutEndpoint}');
-    print('DEBUG: Sending POST to $url');  // Log URL để debug
-
-    // Lấy headers với token (nếu có) để xác thực
-    final headers = await getHeaders();
-    final response = await http.post(
-      url,
-      headers: headers,
-      // Không cần body, theo auth.controller.ts
-    );
-
-    print('DEBUG: Status: ${response.statusCode}');  // Log status để debug
-    print('DEBUG: Response: ${response.body}');  // Log response để debug
-
-    // Luôn xóa token local, dù API thành công hay không
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Xóa tất cả token (access, refresh)
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['data']['loggedOut'] ?? true; // Trả về true nếu loggedOut: true
-    } else {
-      final error = jsonDecode(response.body)['message'] ?? 'Đăng xuất thất bại';
+      final error = data['message'] ?? 'OTP không hợp lệ';
       throw Exception('Status: ${response.statusCode} - $error');
     }
   }
 
-  // Hàm lấy headers với token (giữ nguyên)
-  Future<Map<String, String>> getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token') ?? '';
-    print('DEBUG: getHeaders - Token: $token'); // Log token
-    return {
-      'Content-Type': 'application/json',
-      if (token.isNotEmpty) 'Authorization': 'Bearer $token', // Gửi token
-    };
+  // ────────────────────────────────────────────────────────────────────────
+  //                          8. CẬP NHẬT HỒ SƠ (UPDATE PROFILE)
+  // ────────────────────────────────────────────────────────────────────────
+  Future<UserModel> updateProfile(int userId, Map<String, dynamic> updates) async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.updateUserEndpoint}/$userId');
+    final headers = await _getHeaders();
+    final body = jsonEncode(updates);
+
+    print('DEBUG: [UPDATE PROFILE] PATCH → $url');
+    print('DEBUG: Body → $body');
+
+    final response = await http.patch(url, headers: headers, body: body);
+    print('DEBUG: Status: ${response.statusCode}');
+    print('DEBUG: Response: ${response.body}');
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return UserModel.fromJson(data['data']);
+    } else {
+      final error = data['message'] ?? 'Cập nhật thất bại';
+      throw Exception('Status: ${response.statusCode} - $error');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //                          9. ĐĂNG XUẤT (LOGOUT)
+  // ────────────────────────────────────────────────────────────────────────
+  /// Gọi POST /auth/logout
+  /// Xóa token local dù API có lỗi
+  Future<void> logout() async {
+    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.logoutEndpoint}');
+    final headers = await _getHeaders(withToken: false); // Không cần token
+
+    print('DEBUG: [LOGOUT] POST → $url');
+
+    try {
+      final response = await http.post(url, headers: headers);
+      print('DEBUG: Status: ${response.statusCode}');
+    } catch (e) {
+      print('DEBUG: Logout API error: $e');
+    } finally {
+      // Luôn xóa token dù API lỗi
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      print('DEBUG: Local tokens cleared');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //                          10. LẤY THÔNG TIN USER HIỆN TẠI (GET /users/me)
+  // ────────────────────────────────────────────────────────────────────────
+  /// Gọi GET /users/me (cần thêm route ở backend)
+  Future<UserModel> getCurrentUser() async {
+    final url = Uri.parse('${AppConstants.baseUrl}/users/me');
+    final headers = await _getHeaders();
+
+    print('DEBUG: [GET CURRENT USER] GET → $url');
+
+    final response = await http.get(url, headers: headers);
+
+    print('DEBUG: Status: ${response.statusCode}');
+    print('DEBUG: Response: ${response.body}');
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return UserModel.fromJson(data['data']);
+    } else {
+      final error = data['message'] ?? 'Không thể tải thông tin';
+      throw Exception('Status: ${response.statusCode} - $error');
+    }
   }
 }

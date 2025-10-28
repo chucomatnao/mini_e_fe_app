@@ -1,149 +1,188 @@
-// Màn hình đăng nhập - HIỂN THỊ LỖI 401 BẰNG SNACKBAR
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/custom_button.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _emailTouched = false;
+  bool _passwordTouched = false;
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Đăng nhập')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Consumer<AuthProvider>(
-            builder: (context, authProvider, child) {
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      errorText: _getEmailError(authProvider.errorMessage),
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
+      backgroundColor: Colors.white,
+      body: Consumer<AuthProvider>(
+        builder: (context, authProvider, child) {
+          return Stack(
+            children: [
+              // NỀN GRADIENT
+              Positioned(
+                left: -size.width * 0.4,
+                top: 0,
+                child: Container(
+                  width: size.width * 0.9,
+                  height: size.height,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF7050EF),
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(250),
+                      bottomRight: Radius.circular(250),
                     ),
-                    keyboardType: TextInputType.emailAddress,
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      labelText: 'Mật khẩu',
-                      errorText: _getPasswordError(authProvider.errorMessage),
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
+                ),
+              ),
+
+              // FORM LOGIN
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+                  child: Container(
+                    width: size.width * 0.9,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(36),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x33000000), blurRadius: 20, offset: Offset(0, 10)),
+                      ],
+                      border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
                     ),
-                    obscureText: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Text("Login", style: TextStyle(fontSize: 40, fontWeight: FontWeight.w700, fontFamily: 'Quicksand')),
+                        const SizedBox(height: 40),
+
+                        // EMAIL FIELD
+                        TextFormField(
+                          controller: _emailController,
+                          onChanged: (_) => setState(() => _emailTouched = true),
+                          decoration: InputDecoration(
+                            labelText: 'Email',
+                            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                            errorText: _getEmailError(authProvider.errorMessage),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            filled: true,
+                            fillColor: const Color(0x7FFFF7F7),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: Color(0xFF7050EF), width: 2),
+                            ),
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // PASSWORD FIELD
+                        TextFormField(
+                          controller: _passwordController,
+                          onChanged: (_) => setState(() => _passwordTouched = true),
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                            errorText: _getPasswordError(authProvider.errorMessage),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            filled: true,
+                            fillColor: const Color(0x7FFFF7F7),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: Color(0xFF7050EF), width: 2),
+                            ),
+                          ),
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: 30),
+
+                        // LOGIN BUTTON
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0x960004FF),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            ),
+                            onPressed: authProvider.isLoading ? null : () => _handleLogin(authProvider),
+                            child: authProvider.isLoading
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : const Text('Login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+
+                        // LINKS
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            GestureDetector(
+                              onTap: () => Navigator.pushNamed(context, '/register'),
+                              child: const Text("Create an account", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pushNamed(context, '/forgot-password'),
+                              child: const Text("Forget password?", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  CustomButton(
-                    text: 'Đăng nhập',
-                    isLoading: authProvider.isLoading,
-                    onPressed: () => _handleLogin(authProvider),
-                  ),
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () => Navigator.pushNamed(context, '/register'),
-                    child: const Text('Chưa có tài khoản? Đăng ký'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
-                    child: const Text('Quên mật khẩu?'),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  // HELPER: KIỂM TRA EMAIL HỢP LỆ
+  // SỬA: DÙNG _emailController.text TRONG _getEmailError SAU KHI ĐÃ CÓ GIÁ TRỊ
+  String? _getEmailError(String? backendError) {
+    if (!_emailTouched) return null;
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return 'Email không được để trống';
+    if (!_isValidEmail(email)) return 'Email không hợp lệ';
+    if (backendError?.contains('Email') == true) return 'Email không hợp lệ';
+    return null;
+  }
+
+  String? _getPasswordError(String? backendError) {
+    if (!_passwordTouched) return null;
+    final password = _passwordController.text;
+    if (password.isEmpty) return 'Mật khẩu không được để trống';
+    if (password.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự';
+    if (backendError?.contains('mật khẩu') == true) return 'Mật khẩu không đúng';
+    return null;
+  }
+
   bool _isValidEmail(String email) {
-    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email.toLowerCase());
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
-  // HELPER: LỖI EMAIL
-  String? _getEmailError(String? errorMessage) {
-    if (errorMessage == null) return null;
-
-    final email = _emailController.text.trim();
-
-    if (errorMessage.contains('Email không hợp lệ')) {
-      return 'Email không hợp lệ';
-    }
-
-    if (email.isEmpty) {
-      return 'Email không được để trống';
-    }
-
-    if (!_isValidEmail(email)) {
-      return 'Email không hợp lệ';
-    }
-
-    return null;
-  }
-
-  // HELPER: LỖI PASSWORD
-  String? _getPasswordError(String? errorMessage) {
-    if (errorMessage == null) return null;
-
-    final email = _emailController.text.trim();
-
-    if (errorMessage.contains('Password không được để trống') || errorMessage.contains('Mật khẩu không được để trống')) {
-      return 'Mật khẩu không được để trống';
-    }
-
-    if (errorMessage.contains('Email hoặc mật khẩu') && _isValidEmail(email)) {
-      return 'Mật khẩu không đúng';
-    }
-
-    if (errorMessage.contains('Email không hợp lệ') || errorMessage.contains('Email không đúng')) {
-      return null;
-    }
-
-    return null;
-  }
-
-  // HANDLER: XỬ LÝ LOGIN - THÊM SNACKBAR CHO LỖI 401
   void _handleLogin(AuthProvider authProvider) {
-    authProvider.login(
-      _emailController.text.trim(),
-      _passwordController.text,
-    ).then((_) {
-      // 👈 SỬA: HIỂN THỊ LỖI 401 BẰNG SNACKBAR NẾU CÓ ERROR
-      if (authProvider.errorMessage != null && authProvider.errorMessage!.contains('Email hoặc mật khẩu')) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage!),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-
-      if (authProvider.user != null) {
-        if (!authProvider.isVerified) {
-          authProvider.requestVerify(_emailController.text.trim());
-          Navigator.pushNamed(context, '/verify-account');
-        } else {
-          Navigator.pushReplacementNamed(context, '/home');
-        }
-      }
+    setState(() {
+      _emailTouched = true;
+      _passwordTouched = true;
     });
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (!_isValidEmail(email) || password.isEmpty || password.length < 8) return;
+
+    authProvider.login(email, password);
   }
 
   @override

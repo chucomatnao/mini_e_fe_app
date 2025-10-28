@@ -2,38 +2,33 @@ class UserModel {
   final int? id;
   final String? name;
   final String? email;
+  final String? phone;
+  final String? birthday;
+  final String? gender;
   final String? role;
-  final bool? isVerified;  // Đảm bảo type bool
+  final bool? isVerified;
 
   UserModel({
     this.id,
     this.name,
     this.email,
+    this.phone,
+    this.birthday,
+    this.gender,
     this.role,
     this.isVerified,
   });
 
-  // SỬA: PARSE JSON ĐÚNG CẤU TRÚC BACKEND
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    print('DEBUG: fromJson raw: $json');  // Log để debug
-
     return UserModel(
       id: json['id'],
       name: json['name'],
       email: json['email'],
+      phone: json['phone'],
+      birthday: json['birthday'],
+      gender: json['gender'],
       role: json['role'],
-      // SỬA: LẤY isVerified TỪ ĐÚNG VỊ TRÍ
-      isVerified: json['isVerified'] ?? false,  // Từ user object
+      isVerified: json['isVerified'] ?? false,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-      'role': role,
-      'isVerified': isVerified,
-    };
   }
 }
