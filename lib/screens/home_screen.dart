@@ -13,7 +13,6 @@ class HomeScreen extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final cardWidth = screenWidth * 0.85;
-    final fieldWidth = cardWidth * 0.9;
 
     final userName = authProvider.user?.name;
     final displayInitial = (userName != null && userName.isNotEmpty)
@@ -32,7 +31,10 @@ class HomeScreen extends StatelessWidget {
                 Container(
                   width: screenWidth,
                   height: screenHeight * 0.12,
-                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05, vertical: screenHeight * 0.02),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.05,
+                    vertical: screenHeight * 0.02,
+                  ),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -53,7 +55,9 @@ class HomeScreen extends StatelessWidget {
                         child: GestureDetector(
                           onTap: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Tính năng tìm kiếm sắp được thêm!')),
+                              const SnackBar(
+                                content: Text('Tính năng tìm kiếm sắp được thêm!'),
+                              ),
                             );
                           },
                           child: Container(
@@ -62,7 +66,10 @@ class HomeScreen extends StatelessWidget {
                             decoration: ShapeDecoration(
                               color: const Color(0x7FFFF7F7),
                               shape: RoundedRectangleBorder(
-                                side: const BorderSide(width: 1, color: Color(0xFF0D6EFD)),
+                                side: const BorderSide(
+                                  width: 1,
+                                  color: Color(0xFF0D6EFD),
+                                ),
                                 borderRadius: BorderRadius.circular(15),
                               ),
                               shadows: const [
@@ -94,7 +101,9 @@ class HomeScreen extends StatelessWidget {
                         child: GestureDetector(
                           onTap: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Điều hướng đến giỏ hàng!')),
+                              const SnackBar(
+                                content: Text('Điều hướng đến giỏ hàng!'),
+                              ),
                             );
                           },
                           child: const Text(
@@ -136,10 +145,14 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+
                 // MAIN CONTENT
                 Container(
                   width: screenWidth,
-                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05, vertical: screenHeight * 0.02),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.05,
+                    vertical: screenHeight * 0.02,
+                  ),
                   child: Stack(
                     children: [
                       Positioned(
@@ -168,7 +181,7 @@ class HomeScreen extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                               side: BorderSide(
                                 width: 1,
-                                color: Colors.white.withOpacity(0.5),
+                                color: Colors.white,
                               ),
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -275,57 +288,6 @@ class HomeScreen extends StatelessWidget {
                                     ),
                                   );
                                 },
-                              ),
-                              SizedBox(height: screenHeight * 0.03),
-                              GestureDetector(
-                                onTap: authProvider.isLoading
-                                    ? null
-                                    : () async {
-                                  await authProvider.logout();
-                                  if (authProvider.user == null) {
-                                    Navigator.pushReplacementNamed(context, '/login');
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(authProvider.errorMessage ?? 'Đăng xuất thất bại'),
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: Container(
-                                  width: fieldWidth,
-                                  height: 48,
-                                  decoration: ShapeDecoration(
-                                    color: const Color(0x960004FF),
-                                    shape: RoundedRectangleBorder(
-                                      side: BorderSide(
-                                        width: 1,
-                                        color: Colors.black.withOpacity(0.8),
-                                      ),
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: authProvider.isLoading
-                                        ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                        : const Text(
-                                      'Log out',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontFamily: 'Quicksand',
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               ),
                             ],
                           ),
