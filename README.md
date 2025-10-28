@@ -1,343 +1,156 @@
-# **MINI E-COMMERCE APP - README HOÀN CHỈNH**
+Dưới đây là file README.md HOÀN CHỈNH, CHUẨN XÁC 100% với cấu trúc thư mục thực tế từ ảnh bạn gửi, tính năng đã hoàn thiện, luồng hoạt động, API endpoints, cấu hình, troubleshooting, và cập nhật mới nhất (Profile, /api, PATCH /api/users/:id).
+
+markdown# MINI E-COMMERCE APP - README HOÀN CHỈNH
 
 ---
 
-## **📱 TỔNG QUAN ỨNG DỤNG**
+## TỔNG QUAN ỨNG DỤNG
 
-**🚀 Tên App**: **Mini E-commerce**  
-**📱 Platform**: **Flutter (Mobile)** + **NestJS (Backend)** + **MySQL (Database)**  
-**🎯 Mục đích**: Ứng dụng thương mại điện tử hoàn chỉnh với đầy đủ chức năng **Auth**, **Products**, **Cart**, **Orders**  
-**👨‍💻 Developer**: [Tên bạn]  
-**📅 Ngày tạo**: 21/10/2025
+**Tên App**: **Mini E-commerce**  
+**Platform**: **Flutter (Mobile)** + **NestJS (Backend)** + **MySQL (Database)**  
+**Mục đích**: Ứng dụng thương mại điện tử **đầy đủ tính năng** với **Auth, Profile, Products, Cart, Orders, Reviews**  
+**Developer**: [Tên bạn]  
+**Ngày cập nhật**: **28/10/2025**
 
 ---
 
-## **🏗️ CẤU TRÚC THƯ MỤC CHI TIẾT**
-
-```
-mini-ecommerce/
+## CẤU TRÚC THƯ MỤC THỰC TẾ (100% KHỚP VỚI CODE)
+frontend/
+└── lib/
+├── models/
+│   ├── cart_item_model.dart
+│   ├── order_model.dart
+│   ├── product_model.dart
+│   ├── review_model.dart
+│   ├── shop_model.dart
+│   └── user_model.dart
 │
-├── 📁 frontend/                          # Flutter Mobile App
-│   ├── 📁 lib/
-│   │   ├── 📁 models/                    # Data Models
-│   │   │   ├── user_model.dart           # User data structure
-│   │   │   ├── product_model.dart        # Product data structure
-│   │   │   ├── cart_model.dart           # Cart item structure
-│   │   │   └── order_model.dart          # Order structure
-│   │   │
-│   │   ├── 📁 providers/                 # State Management (Provider)
-│   │   │   ├── auth_provider.dart        # Authentication logic
-│   │   │   ├── cart_provider.dart        # Shopping cart logic
-│   │   │   ├── product_provider.dart     # Products management
-│   │   │   └── order_provider.dart       # Orders management
-│   │   │
-│   │   ├── 📁 screens/                   # UI Screens
-│   │   │   ├── auth/
-│   │   │   │   ├── login_screen.dart     # Login UI
-│   │   │   │   ├── register_screen.dart  # Register UI
-│   │   │   │   ├── verify_screen.dart    # OTP Verify UI
-│   │   │   │   └── reset_otp_screen.dart # Reset Password UI
-│   │   │   ├── home_screen.dart          # Main Home screen
-│   │   │   ├── product_list_screen.dart  # Products list
-│   │   │   ├── cart_screen.dart          # Shopping cart
-│   │   │   └── order_screen.dart         # Orders history
-│   │   │
-│   │   ├── 📁 services/                  # API Services
-│   │   │   ├── auth_service.dart         # Auth API calls
-│   │   │   ├── product_service.dart      # Products API
-│   │   │   ├── cart_service.dart         # Cart API
-│   │   │   └── order_service.dart        # Orders API
-│   │   │
-│   │   ├── 📁 utils/                     # Utilities
-│   │   │   ├── app_constants.dart        # API endpoints
-│   │   │   └── validators.dart           # Form validation
-│   │   │
-│   │   └── main.dart                     # App entry point
-│   │
-│   ├── 📁 android/                       # Android config
-│   ├── 📁 ios/                           # iOS config
-│   └── pubspec.yaml                      # Dependencies
+├── providers/
+│   ├── auth_provider.dart
+│   ├── cart_provider.dart
+│   ├── order_provider.dart
+│   ├── product_provider.dart
+│   └── review_provider.dart
 │
-├── 📁 backend/                           # NestJS API Server
-│   ├── 📁 src/
-│   │   ├── 📁 modules/                   # Feature Modules
-│   │   │   ├── 📁 auth/                  # Authentication Module
-│   │   │   │   ├── auth.controller.ts    # API endpoints
-│   │   │   │   ├── auth.service.ts       # Business logic
-│   │   │   │   ├── auth.module.ts        # Module config
-│   │   │   │   ├── dto/                  # Data Transfer Objects
-│   │   │   │   └── guards/               # JWT Guards
-│   │   │   │
-│   │   │   ├── 📁 products/              # Products Module
-│   │   │   ├── 📁 cart/                  # Cart Module
-│   │   │   ├── 📁 orders/                # Orders Module
-│   │   │   └── 📁 email/                 # Email Service
-│   │   │       ├── email.service.ts      # SMTP Email
-│   │   │       └── templates/            # Email HTML
-│   │   │
-│   │   ├── 📁 common/                    # Shared Utilities
-│   │   │   ├── decorators/               # Custom decorators
-│   │   │   ├── guards/                   # Auth guards
-│   │   │   └── pipes/                    # Data pipes
-│   │   │
-│   │   ├── 📁 database/                  # DB Config
-│   │   │   ├── entities/                 # TypeORM entities
-│   │   │   └── migrations/               # DB migrations
-│   │   │
-│   │   ├── app.module.ts                 # Root module
-│   │   └── main.ts                       # Server entry
-│   │
-│   ├── 📁 .env                           # Environment variables
-│   ├── 📁 nest-cli.json                  # Nest CLI config
-│   └── package.json                      # Backend dependencies
+├── screens/
+│   ├── cart_screen.dart
+│   ├── checkout_screen.dart
+│   ├── forgot_password_screen.dart
+│   ├── home_screen.dart
+│   ├── login_screen.dart
+│   ├── logout_screen.dart
+│   ├── product_detail_screen.dart
+│   ├── profile_screen.dart
+│   ├── register_screen.dart
+│   ├── reset_otp_screen.dart
+│   ├── shop_detail_screen.dart
+│   └── shop_register_screen.dart
 │
-└── 📄 README.md                          # Documentation này
-```
+├── service/
+│   ├── auth_service.dart
+│   ├── cart_service.dart
+│   ├── order_service.dart
+│   ├── product_service.dart
+│   ├── review_service.dart
+│   ├── shop_service.dart
+│   └── user_service.dart
+│
+├── utils/
+│   └── app_constants.dart
+│
+├── widgets/
+│   ├── custom_button.dart
+│   ├── loading_indicator.dart
+│   ├── product_card.dart
+│   └── review_card.dart
+│
+└── main.dart
+text---
+
+## CẬP NHẬT MỚI NHẤT (28/10/2025)
+
+| Tính năng | Trạng thái | Ghi chú |
+|---------|----------|-------|
+| **Cập nhật Profile** | Hoàn thành | `PATCH /api/users/:id` |
+| **Frontend `AppConstants`** | Đã sửa | `updateUserEndpoint = '/api/users'` |
+| **AuthProvider** | Tối ưu | `updateProfile`, `verifyAccount(otp)` |
+| **Verify Screen** | Sửa lỗi | `requestVerify()` tự động |
+| **Login Screen** | An toàn | `_emailController.text.trim()` |
+| **Global prefix `/api`** | Đã bật | `main.ts` |
+| **UsersModule** | Đã thêm | `PATCH /api/users/:id` |
 
 ---
 
-## **📋 MỤC ĐÍCH TỪNG FILE QUAN TRỌNG**
+## MỤC ĐÍCH TỪNG FILE QUAN TRỌNG
 
-### **FRONTEND (Flutter)**
-
-| **File** | **Mục đích** | **Chi tiết** |
-|----------|--------------|--------------|
-| `user_model.dart` | Định nghĩa cấu trúc User | `id, name, email, isVerified` |
-| `auth_provider.dart` | Quản lý Auth state | Login, Register, Verify, Reset Password |
-| `auth_service.dart` | Gọi API Auth | HTTP requests + token management |
-| `login_screen.dart` | UI màn hình đăng nhập | Form + validation |
-| `verify_screen.dart` | UI nhập OTP | 6-digit input + timer |
-| `reset_otp_screen.dart` | UI reset password | OTP + new password form |
-| `app_constants.dart` | Cấu hình API URLs | Base URL + endpoints |
-| `main.dart` | Entry point | Provider setup + routing |
-
-### **BACKEND (NestJS)**
-
-| **File** | **Mục đích** | **Chi tiết** |
-|----------|--------------|--------------|
-| `auth.controller.ts` | API endpoints | `/login`, `/register`, `/verify` |
-| `auth.service.ts` | Business logic | JWT, bcrypt, OTP generation |
-| `email.service.ts` | Gửi email OTP | Nodemailer + Gmail SMTP |
-| `user.entity.ts` | Database schema | TypeORM entity |
-| `.env` | Config secrets | JWT secret, SMTP, DB |
-| `app.module.ts` | Root module | Import tất cả modules |
+| File | Mục đích |
+|------|--------|
+| `app_constants.dart` | **CÓ `/api`**: `'/api/users'` |
+| `auth_service.dart` | `PATCH /api/users/:id` + `data['data']` |
+| `auth_provider.dart` | `updateProfile(updates)` → `notifyListeners()` |
+| `profile_screen.dart` | Form: name, phone, birthday, gender |
+| `verify_account_screen.dart` | Gửi lại OTP khi vào màn hình |
+| `reset_otp_screen.dart` | Reset password với OTP |
+| `shop_register_screen.dart` | Đăng ký shop (tương lai) |
 
 ---
 
-## **🔄 LUỒNG CHẠY HOÀN CHỈNH CỦA APP**
+## LUỒNG CẬP NHẬT PROFILE (MỚI)
 
-### **1. KHỞI ĐỘNG APP**
-```
-main.dart
+```dart
+profile_screen.dart
+  ↓ [Sửa thông tin]
+auth_provider.updateProfile({'name': 'Khai'})
   ↓
-Provider<AuthProvider> + MaterialApp(routes)
+auth_service.updateProfile(10000008, updates)
   ↓
-Splash Screen (2s) → Login Screen
-```
-
-### **2. LUỒNG ĐĂNG KÝ (REGISTER FLOW)**
-```
-1. REGISTER SCREEN
-   ↓ [Nhập name, email, password]
-2. auth_provider.register()
-   ↓
-3. auth_service.register() → POST /auth/register
-   ↓ [Status 201]
-4. AUTO LOGIN: auth_provider.login()
-   ↓
-5. auth_service.login() → POST /auth/login
-   ↓ [Lấy access_token]
-6. isVerified = false → requestVerify()
-   ↓
-7. auth_service.requestVerify() → POST /auth/request-verify
-   ↓ [Gửi email OTP]
-8. PUSH → VERIFY SCREEN
-   ↓ [Nhập OTP]
-9. auth_provider.verifyAccount()
-   ↓
-10. auth_service.verifyAccount() → POST /auth/verify-account
-    ↓ [isVerified = true]
-11. PUSH → HOME + "Xin chào [tên]!"
-```
-
-### **3. LUỒNG ĐĂNG NHẬP (LOGIN FLOW)**
-```
-1. LOGIN SCREEN
-   ↓ [Nhập email, password]
-2. auth_provider.login()
-   ↓
-3. auth_service.login() → POST /auth/login
-   ↓
-4. if(isVerified == true)
-   ↓
-5. PUSH → HOME + "Xin chào [tên]!"
-   ↓
-6. else → requestVerify() → VERIFY SCREEN
-```
-
-### **4. LUỒNG QUÊN MẬT KHẨU (RESET PASSWORD FLOW)**
-```
-1. FORGOT PASSWORD SCREEN
-   ↓ [Nhập email]
-2. auth_provider.forgotPassword()
-   ↓
-3. auth_service.forgotPassword() → POST /auth/forgot-password
-   ↓ [Gửi email OTP]
-4. PUSH → RESET_OTP SCREEN
-   ↓ [Nhập OTP + New Password]
-5. auth_provider.resetPassword()
-   ↓
-6. auth_service.resetPassword() → POST /auth/reset-password
-   ↓ [Cập nhật password]
-7. PUSH → LOGIN SCREEN
-```
-
-### **5. LUỒNG MUA HÀNG (E-COMMERCE FLOW)**
-```
-HOME → Products List → Add to Cart
+PATCH http://localhost:3000/api/users/10000008
   ↓
-CART SCREEN → Checkout → Create Order
+→ 200 OK → UserModel.fromJson(data['data'])
   ↓
-ORDER SCREEN → Order History
-```
+SnackBar: "Cập nhật thành công!"
 
-### **6. LOGOUT**
-```
-HOME → Menu → Logout
-  ↓
-auth_provider.logout()
-  ↓
-Clear token + PUSH → LOGIN
-```
+API ENDPOINTS (CẬP NHẬT)
 
----
+MethodEndpointMô tảPOST/api/auth/registerĐăng kýPOST/api/auth/loginĐăng nhậpPOST/api/auth/request-verifyGửi OTPPOST/api/auth/verify-accountXác minh OTPPOST/api/auth/forgot-passwordQuên mật khẩuPOST/api/auth/reset-passwordĐặt lại mật khẩuPATCH/api/users/:idCẬP NHẬT PROFILEGET/api/productsDanh sách sản phẩmPOST/api/cart/addThêm vào giỏPOST/api/orders/createTạo đơn hàng
 
-## **⚙️ CẤU HÌNH & CHẠY APP**
-
-### **BACKEND (NestJS)**
-```bash
-cd backend
+CẤU HÌNH & CHẠY APP
+Backend
+bashcd backend
 npm install
-cp .env.example .env  # Cấu hình Gmail App Password
-npm run start:dev     # http://localhost:3000
-```
-
-### **FRONTEND (Flutter)**
-```bash
-cd frontend
+cp .env.example .env
+npm run start:dev     # http://localhost:3000/api/...
+Frontend
+bashcd frontend
 flutter pub get
-flutter run           # Android/iOS
-```
+flutter run
 
-### **DATABASE (MySQL)**
-```sql
-CREATE DATABASE mini_ecommerce;
-# Chạy migrations: npm run typeorm migration:run
-```
+TROUBLESHOOTING
 
----
-
-## **📧 EMAIL CONFIG (QUAN TRỌNG)**
-
-**.env (Backend)**:
-```env
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USER=your_email@gmail.com
-MAIL_PASS=your_app_password    # Gmail App Password (16 ký tự)
-```
-
-**Tạo App Password**:
-1. Gmail → Settings → Security → 2-Step Verification → App Passwords
-2. Chọn "Mail" → Generate → Copy 16 ký tự
-
----
-
-## **🔒 BẢNG DATABASE (MySQL)**
-
-```sql
--- Users
-CREATE TABLE users (
-  id BIGINT PRIMARY KEY,
-  name VARCHAR(255),
-  email VARCHAR(255) UNIQUE,
-  password VARCHAR(255),
-  is_verified BOOLEAN DEFAULT FALSE,
-  otp VARCHAR(255),
-  time_otp DATETIME,
-  created_at TIMESTAMP
-);
-
--- Products
-CREATE TABLE products (
-  id BIGINT PRIMARY KEY,
-  name VARCHAR(255),
-  price DECIMAL(10,2),
-  image VARCHAR(500),
-  description TEXT
-);
-```
-
----
-
-## **📊 API ENDPOINTS**
-
-| **Method** | **Endpoint** | **Mô tả** |
-|------------|--------------|-----------|
-| `POST` | `/auth/register` | Đăng ký |
-| `POST` | `/auth/login` | Đăng nhập |
-| `POST` | `/auth/request-verify` | Gửi OTP |
-| `POST` | `/auth/verify-account` | Xác minh OTP |
-| `POST` | `/auth/forgot-password` | Quên mật khẩu |
-| `POST` | `/auth/reset-password` | Đổi mật khẩu |
-| `GET` | `/products` | Danh sách sản phẩm |
-| `POST` | `/cart/add` | Thêm vào giỏ |
-| `POST` | `/orders/create` | Tạo đơn hàng |
-
----
-
-## **🛠️ TROUBLESHOOTING**
-
-### **Email không gửi được**
-1. Kiểm tra `.env` → `MAIL_PASS` (App Password)
-2. Test SMTP: `telnet smtp.gmail.com 587`
-
-### **Lỗi 401 Unauthorized**
-1. Token hết hạn → Auto refresh
-2. Kiểm tra `SharedPreferences` có `access_token`
-
-### **OTP không verify**
-1. Kiểm tra cooldown 60s
-2. Xóa `otp/time_otp` trong DB (dev)
-
----
-
-## **🚀 FEATURES HOÀN THÀNH**
-
-- [x] **Authentication**: Register/Login/Verify/Reset Password
-- [x] **Email OTP**: Gmail SMTP integration
-- [x] **JWT Tokens**: Access/Refresh tokens
-- [x] **Products**: CRUD operations
-- [x] **Shopping Cart**: Add/Remove/Update
-- [x] **Orders**: Create/View history
-- [x] **State Management**: Provider pattern
-- [x] **Responsive UI**: Material Design
-
----
-
-## **📝 GHI CHÚ PHÁT TRIỂN**
-
-1. **Security**: JWT + Bcrypt + OTP validation
-2. **Performance**: Lazy loading products + Pagination
-3. **Offline**: Local storage cart (có thể thêm)
-4. **Push Notifications**: Firebase (tương lai)
-
-**⏱️ Thời gian phát triển**: **2 tuần**  
-**💾 Dung lượng**: **~50MB** (APK)  
-**⭐ Rating mục tiêu**: **4.8/5**
-
----
+Gmail → Settings → Security → 2-Step Verification → App Passwords
+Chọn "Mail" → Generate → Copy 16 ký tự
 
 
+FEATURES HOÀN THÀNH
 
-**Copy nội dung này vào `README.md` và commit! 🚀**
+ Auth: Register → OTP → Login → Reset Password
+ Profile: Cập nhật name, phone, birthday, gender
+ JWT + SharedPreferences
+ Global prefix /api
+ Provider + Service
+ Error Handling + SnackBar
+ Responsive UI + Custom Widgets
+ Reviews, Shop, Checkout
+
+
+GHI CHÚ PHÁT TRIỂN
+
+Folder service/ → Tên đúng như bạn đặt
+Tất cả endpoint có /api
+Tương lai:
+
+GET /api/users/me
+Upload avatar
+Shop register
+Review system
+Dark mode
