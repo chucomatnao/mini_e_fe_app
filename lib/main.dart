@@ -47,11 +47,11 @@ class MyApp extends StatelessWidget {
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/register': (context) =>  RegisterScreen(),
-        '/home': (context) =>  HomeScreen(),
-        '/forgot-password': (context) =>  ForgotPasswordScreen(),
+        '/register': (context) => RegisterScreen(), // Không dùng const
+        '/home': (context) => HomeScreen(),         // Không dùng const
+        '/forgot-password': (context) => ForgotPasswordScreen(), // Không dùng const
         '/verify-account': (context) => const VerifyAccountScreen(),
-        '/reset-otp': (context) =>  ResetOtpScreen(),
+        '/reset-otp': (context) => ResetOtpScreen(), // Không dùng const
         '/profile': (context) => const ProfileScreen(),
         '/shop-management': (context) => const ShopManagementScreen(),
         '/shop-register': (context) => const ShopRegisterScreen(),

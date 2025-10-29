@@ -1,9 +1,7 @@
-// File: lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
-import '../widgets/product_card.dart';
 
 class HomeScreen extends StatelessWidget {
   @override
@@ -179,10 +177,7 @@ class HomeScreen extends StatelessWidget {
                           decoration: ShapeDecoration(
                             color: const Color(0x4CD9D9D9),
                             shape: RoundedRectangleBorder(
-                              side: BorderSide(
-                                width: 1,
-                                color: Colors.white,
-                              ),
+                              side: BorderSide(width: 1, color: Colors.white),
                               borderRadius: BorderRadius.circular(30),
                             ),
                             shadows: const [
