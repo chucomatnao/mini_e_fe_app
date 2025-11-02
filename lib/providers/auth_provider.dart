@@ -1,26 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart'; // Để gọi UserProvider
+
 import '../service/auth_service.dart';
 import '../models/user_model.dart';
+import '../providers/user_provider.dart'; // THÊM để gọi fetchMe
 
-/// ════════════════════════════════════════════════════════════════════════
-///                           AUTH PROVIDER CLASS
-/// ════════════════════════════════════════════════════════════════════════
 class AuthProvider with ChangeNotifier {
-  // ════════════════════════════════════════════════════════════════════════
-  //                          STATE VARIABLES
-  // ════════════════════════════════════════════════════════════════════════
-
   UserModel? _user;
   bool _isLoading = false;
   String? _errorMessage;
   bool _isVerified = false;
   String? _resetEmail;
-  String? _accessToken; // Token để gọi API bảo mật
-
-  // ════════════════════════════════════════════════════════════════════════
-  //                          GETTERS
-  // ════════════════════════════════════════════════════════════════════════
+  String? _accessToken;
 
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
@@ -29,16 +21,9 @@ class AuthProvider with ChangeNotifier {
   String? get resetEmail => _resetEmail;
   String? get accessToken => _accessToken;
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          SERVICES
-  // ════════════════════════════════════════════════════════════════════════
-
   final AuthService _authService = AuthService();
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          ERROR PARSER
-  // ════════════════════════════════════════════════════════════════════════
   String _parseErrorMessage(dynamic error) {
     String errorStr = error.toString();
     errorStr = errorStr.replaceFirst('Exception: ', '');
@@ -56,15 +41,12 @@ class AuthProvider with ChangeNotifier {
     return errorStr.isEmpty ? 'Có lỗi xảy ra' : errorStr;
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          1. REGISTER
-  // ════════════════════════════════════════════════════════════════════════
   Future<void> register(String name, String email, String password, String confirmPassword) async {
     _startLoading();
     try {
       _user = await _authService.register(name, email, password, confirmPassword);
       _isVerified = _user?.isVerified ?? false;
-      await login(email, password); // Tự động đăng nhập
+      await login(email, password);
     } catch (e) {
       _setError(e);
     } finally {
@@ -72,22 +54,13 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          2. LOGIN
-  // ════════════════════════════════════════════════════════════════════════
   Future<void> login(String email, String password) async {
     _startLoading();
     try {
       final result = await _authService.login(email, password);
       _user = result['user'] as UserModel;
       _accessToken = result['access_token'] as String;
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('access_token', _accessToken!);
-
       _isVerified = _user?.isVerified ?? false;
-
-      print('DEBUG: Login success - User: ${_user?.name}, Token: ${_accessToken?.substring(0, 20)}...');
 
       if (!_isVerified) {
         await requestVerify();
@@ -102,9 +75,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          3. VERIFY OTP
-  // ════════════════════════════════════════════════════════════════════════
   Future<void> verifyAccount(String otp) async {
     _startLoading();
     try {
@@ -119,9 +89,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          4. FORGOT PASSWORD
-  // ════════════════════════════════════════════════════════════════════════
   Future<void> forgotPassword(String email) async {
     _startLoading();
     try {
@@ -138,9 +105,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          5. RESET PASSWORD
-  // ════════════════════════════════════════════════════════════════════════
   Future<void> resetPassword(String otp, String newPassword, String confirmPassword) async {
     _startLoading();
     try {
@@ -160,19 +124,11 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          6. LOGOUT
-  // ════════════════════════════════════════════════════════════════════════
   Future<void> logout() async {
     _startLoading();
     try {
       await _authService.logout();
-    } catch (e) {
-      print('Logout API error: $e');
     } finally {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('access_token');
-      await prefs.remove('refresh_token');
       _clearUserData();
       _accessToken = null;
       _navigateTo('/login');
@@ -180,9 +136,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          7. REQUEST VERIFY OTP
-  // ════════════════════════════════════════════════════════════════════════
   Future<void> requestVerify() async {
     _startLoading();
     try {
@@ -195,53 +148,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //                          8. UPDATE PROFILE
-  // ════════════════════════════════════════════════════════════════════════
-  Future<void> updateProfile(Map<String, dynamic> updates) async {
-    if (_user == null || _user!.id == null) {
-      _setError(Exception('Không tìm thấy thông tin người dùng'));
-      return;
-    }
-    _startLoading();
-    try {
-      final updatedUser = await _authService.updateProfile(_user!.id!, updates);
-      _user = updatedUser;
-      _isVerified = updatedUser.isVerified ?? false;
-      _showSnackBar('Cập nhật thông tin thành công!', Colors.green);
-      notifyListeners();
-    } catch (e) {
-      _setError(e);
-      _showSnackBar(_errorMessage ?? 'Cập nhật thất bại', Colors.red);
-    } finally {
-      _stopLoading();
-    }
-  }
-
-  // ════════════════════════════════════════════════════════════════════════
-  //                          9. INIT - LOAD TOKEN + USER
-  // ════════════════════════════════════════════════════════════════════════
-  Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _accessToken = prefs.getString('access_token');
-
-    if (_accessToken != null && _accessToken!.isNotEmpty) {
-      try {
-        _user = await _authService.getCurrentUser(_accessToken!);
-        _isVerified = _user?.isVerified ?? false;
-        notifyListeners();
-        print('DEBUG: Auto-login success - User: ${_user?.name}');
-      } catch (e) {
-        print('Token invalid or expired: $e');
-        await prefs.remove('access_token');
-        _accessToken = null;
-      }
-    }
-  }
-
-  // ════════════════════════════════════════════════════════════════════════
-  //                          10. PRIVATE HELPERS
-  // ════════════════════════════════════════════════════════════════════════
   void _startLoading() {
     _isLoading = true;
     _errorMessage = null;
@@ -286,6 +192,43 @@ class AuthProvider with ChangeNotifier {
           duration: const Duration(seconds: 2),
         ),
       );
+    }
+  }
+
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _accessToken = prefs.getString('access_token');
+
+    if (_accessToken != null && _accessToken!.isNotEmpty) {
+      print('DEBUG: Auto-load token success');
+
+      try {
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+          await userProvider.fetchMe();
+          _user = userProvider.me;
+          _isVerified = _user?.isVerified ?? false;
+          print('DEBUG: Auto-load user success → ${_user?.email}');
+        } else {
+          print('DEBUG: Context chưa sẵn sàng, sẽ load user sau.');
+        }
+      } catch (e) {
+        print('DEBUG: Auto-load user failed: $e');
+
+        // ⚠️ Không logout ngay — chỉ xóa token nếu thực sự bị 401
+        final err = e.toString().toLowerCase();
+        if (err.contains('401') || err.contains('unauthorized')) {
+          print('DEBUG: Token invalid → logout bắt buộc.');
+          await prefs.remove('access_token');
+          _accessToken = null;
+          _user = null;
+        } else {
+          print('DEBUG: Lỗi khác, vẫn giữ token để thử lại sau.');
+        }
+      }
+    } else {
+      print('DEBUG: Không có token → yêu cầu đăng nhập lại.');
     }
   }
 }
