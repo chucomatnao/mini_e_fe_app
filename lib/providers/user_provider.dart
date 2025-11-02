@@ -1,25 +1,20 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/user_model.dart';
-import '../services/user_service.dart';
+import '../service/user_service.dart';
 
 class UserProvider extends ChangeNotifier {
-  final UserService userService;
+  final UserService _userService = UserService(); // Không cần param nữa
 
-  UserProvider({required this.userService});
-
-  // ---- state ----
   UserModel? _me;
   bool _loading = false;
   String? _error;
 
-  // admin lists
   List<UserModel> _users = [];
   int _page = 1, _limit = 20, _total = 0;
 
   List<UserModel> _deletedUsers = [];
 
-  // ---- getters ----
   UserModel? get me => _me;
   bool get isLoading => _loading;
   String? get error => _error;
@@ -40,13 +35,12 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ------------------ SELF ------------------
-
   Future<void> fetchMe() async {
+    if (_me != null) return; // Tránh gọi lặp
+    _setLoading(true);
     try {
-      _setLoading(true);
+      _me = await _userService.getMe();
       _setError(null);
-      _me = await userService.getMe();
     } catch (e) {
       _setError(e.toString());
     } finally {
@@ -55,12 +49,11 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<bool> updateMe(Map<String, dynamic> patch) async {
+    _setLoading(true);
     try {
-      _setLoading(true);
-      _setError(null);
-      final updated = await userService.updateMe(patch);
+      final updated = await _userService.updateMe(patch);
       _me = updated;
-      notifyListeners();
+      _setError(null);
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -71,12 +64,11 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<bool> deleteMeSoft() async {
+    if (_me?.id == null) return false;
+    _setLoading(true);
     try {
-      _setLoading(true);
+      await _userService.deleteMeSoft();
       _setError(null);
-      await userService.deleteMeSoft();
-      // tuỳ UX: có thể set _me = _me.copyWith(deletedAt: DateTime.now());
-      notifyListeners();
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -86,31 +78,27 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  // ------------------ ADMIN ------------------
-
-  Future<bool> createUser(Map<String, dynamic> body) async {
+  Future<void> createUser(Map<String, dynamic> body) async {
+    _setLoading(true);
     try {
-      _setLoading(true);
+      await _userService.createUser(body);
       _setError(null);
-      final _ = await userService.createUser(body);
-      return true;
     } catch (e) {
       _setError(e.toString());
-      return false;
     } finally {
       _setLoading(false);
     }
   }
 
   Future<void> fetchUsers(UserQuery query) async {
+    _setLoading(true);
     try {
-      _setLoading(true);
-      _setError(null);
-      final pageResp = await userService.listUsers(query);
+      final pageResp = await _userService.listUsers(query);
       _users = pageResp.items;
       _page = pageResp.page;
       _limit = pageResp.limit;
       _total = pageResp.total;
+      _setError(null);
     } catch (e) {
       _setError(e.toString());
     } finally {
@@ -119,10 +107,11 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<UserModel?> fetchUserById(String id) async {
+    _setLoading(true);
     try {
-      _setLoading(true);
+      final user = await _userService.getUserById(id);
       _setError(null);
-      return await userService.getUserById(id);
+      return user;
     } catch (e) {
       _setError(e.toString());
       return null;
@@ -130,17 +119,17 @@ class UserProvider extends ChangeNotifier {
       _setLoading(false);
     }
   }
+
   Future<bool> updateUserById(String id, Map<String, dynamic> patch) async {
+    _setLoading(true);
     try {
-      _setLoading(true);
-      _setError(null);
-      final updated = await userService.updateUserById(id, patch);
-      // sync list nếu có:
+      final updated = await _userService.updateUserById(id, patch);
       final idx = _users.indexWhere((u) => u.id == id);
       if (idx >= 0) {
         _users[idx] = updated;
         notifyListeners();
       }
+      _setError(null);
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -151,12 +140,12 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<bool> deleteUserSoft(String id) async {
+    _setLoading(true);
     try {
-      _setLoading(true);
-      _setError(null);
-      await userService.deleteUserSoft(id);
+      await _userService.deleteUserSoft(id);
       _users.removeWhere((u) => u.id == id);
       notifyListeners();
+      _setError(null);
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -167,15 +156,14 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<bool> restoreUser(String id) async {
+    _setLoading(true);
     try {
-      _setLoading(true);
-      _setError(null);
-      final restored = await userService.restoreUser(id);
-      // nếu đang ở list deleted -> bỏ ra; nếu ở list active -> update
+      final restored = await _userService.restoreUser(id);
       _deletedUsers.removeWhere((u) => u.id == id);
       final idx = _users.indexWhere((u) => u.id == id);
       if (idx >= 0) _users[idx] = restored;
       notifyListeners();
+      _setError(null);
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -186,13 +174,13 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<bool> deleteUserHard(String id) async {
+    _setLoading(true);
     try {
-      _setLoading(true);
-      _setError(null);
-      await userService.deleteUserHard(id);
+      await _userService.deleteUserHard(id);
       _users.removeWhere((u) => u.id == id);
       _deletedUsers.removeWhere((u) => u.id == id);
       notifyListeners();
+      _setError(null);
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -203,12 +191,26 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> fetchDeletedUsers() async {
+    _setLoading(true);
     try {
-      _setLoading(true);
+      _deletedUsers = await _userService.listDeletedUsers();
       _setError(null);
-      _deletedUsers = await userService.listDeletedUsers();
     } catch (e) {
       _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> updateProfile(Map<String, dynamic> updates) async {
+    _setLoading(true);
+    try {
+      final updated = await _userService.updateMe(updates);
+      _me = updated;
+      _setError(null);
+    } catch (e) {
+      _setError(e.toString());
+      rethrow;
     } finally {
       _setLoading(false);
     }
