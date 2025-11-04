@@ -33,110 +33,80 @@ class HomeScreen extends StatelessWidget {
                     horizontal: screenWidth * 0.05,
                     vertical: screenHeight * 0.02,
                   ),
-                  child: Stack(
-                    alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Positioned(
-                        left: screenWidth * 0.05,
+                      const Text(
+                        'Mini E',
+                        style: TextStyle(
+                          color: Color(0x960004FF),
+                          fontSize: 26,
+                          fontFamily: 'Quicksand',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                          child: GestureDetector(
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Tính năng tìm kiếm sắp được thêm!'),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              height: 48,
+                              decoration: ShapeDecoration(
+                                color: const Color(0x7FFFF7F7),
+                                shape: RoundedRectangleBorder(
+                                  side: const BorderSide(
+                                    width: 1,
+                                    color: Color(0xFF0D6EFD),
+                                  ),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                shadows: const [
+                                  BoxShadow(
+                                    color: Color(0x3F000000),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 4),
+                                    spreadRadius: 0,
+                                  ),
+                                ],
+                              ),
+                              child: const Padding(
+                                padding: EdgeInsets.only(left: 20, top: 16, bottom: 16),
+                                child: Text(
+                                  'Search',
+                                  style: TextStyle(
+                                    color: Color(0xFF8A96A4),
+                                    fontSize: 12,
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Điều hướng đến giỏ hàng!'),
+                            ),
+                          );
+                        },
                         child: const Text(
-                          'Mini E',
+                          'My cart',
                           style: TextStyle(
-                            color: Color(0x960004FF),
-                            fontSize: 26,
-                            fontFamily: 'Quicksand',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: screenWidth * 0.2,
-                        child: GestureDetector(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Tính năng tìm kiếm sắp được thêm!'),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            width: screenWidth * 0.55,
-                            height: 48,
-                            decoration: ShapeDecoration(
-                              color: const Color(0x7FFFF7F7),
-                              shape: RoundedRectangleBorder(
-                                side: const BorderSide(
-                                  width: 1,
-                                  color: Color(0xFF0D6EFD),
-                                ),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              shadows: const [
-                                BoxShadow(
-                                  color: Color(0x3F000000),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 4),
-                                  spreadRadius: 0,
-                                ),
-                              ],
-                            ),
-                            child: const Padding(
-                              padding: EdgeInsets.only(left: 20, top: 16, bottom: 16),
-                              child: Text(
-                                'Search',
-                                style: TextStyle(
-                                  color: Color(0xFF8A96A4),
-                                  fontSize: 12,
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: screenWidth * 0.15,
-                        child: GestureDetector(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Điều hướng đến giỏ hàng!'),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'My cart',
-                            style: TextStyle(
-                              color: Color(0xFF0A75FF),
-                              fontSize: 14,
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: screenWidth * 0.05,
-                        child: GestureDetector(
-                          onTap: () => Navigator.pushNamed(context, '/profile'),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: const ShapeDecoration(
-                              color: Color(0xFF0872FF),
-                              shape: OvalBorder(),
-                            ),
-                            child: Center(
-                              child: Text(
-                                displayInitial,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
+                            color: Color(0xFF0A75FF),
+                            fontSize: 14,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -295,6 +265,97 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: 0,
+        selectedItemColor: Colors.red,
+        unselectedItemColor: Colors.grey,
+        onTap: (index) {
+          if (index == 4) {
+            Navigator.pushNamed(context, '/profile');
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Chuyển đến tab $index')),
+            );
+          }
+        },
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_bag),
+            label: 'Mall',
+          ),
+          BottomNavigationBarItem(
+            icon: Stack(
+              children: [
+                const Icon(Icons.tv),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: const Text(
+                      'Mới!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            label: 'Live & Video',
+          ),
+          BottomNavigationBarItem(
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: const Text(
+                      '16',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            label: 'Thông báo',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Tôi',
+          ),
+        ],
       ),
     );
   }
