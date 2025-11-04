@@ -24,6 +24,8 @@ class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+
+
   String _parseErrorMessage(dynamic error) {
     String errorStr = error.toString();
     errorStr = errorStr.replaceFirst('Exception: ', '');
@@ -54,19 +56,34 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // ==================== LOGIN ====================
   Future<void> login(String email, String password) async {
     _startLoading();
     try {
       final result = await _authService.login(email, password);
       _user = result['user'] as UserModel;
       _accessToken = result['access_token'] as String;
+
+      // LƯU TOKEN
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('access_token', _accessToken!);
+
       _isVerified = _user?.isVerified ?? false;
 
       if (!_isVerified) {
         await requestVerify();
         _navigateTo('/verify-account');
       } else {
-        _navigateToHomeAndWelcome();
+        // PHÂN BIỆT ADMIN / USER
+        final isAdmin = _user?.role?.toUpperCase() == 'ADMIN';
+        if (isAdmin) {
+          print('ADMIN LOGIN → /admin-home');
+          _navigateTo('/admin-home');
+        } else {
+          print('USER LOGIN → /home');
+          _navigateTo('/home');
+        }
+        _showSnackBar('Xin chào ${_user!.name}!', Colors.green);
       }
     } catch (e) {
       _setError(e);
@@ -74,6 +91,8 @@ class AuthProvider with ChangeNotifier {
       _stopLoading();
     }
   }
+
+
 
   Future<void> verifyAccount(String otp) async {
     _startLoading();
@@ -199,36 +218,60 @@ class AuthProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _accessToken = prefs.getString('access_token');
 
-    if (_accessToken != null && _accessToken!.isNotEmpty) {
-      print('DEBUG: Auto-load token success');
+    if (_accessToken == null || _accessToken!.isEmpty) {
+      print('DEBUG: Không có token → yêu cầu đăng nhập.');
+      _navigateTo('/login');
+      return;
+    }
 
-      try {
-        final context = navigatorKey.currentContext;
-        if (context != null) {
-          final userProvider = Provider.of<UserProvider>(context, listen: false);
-          await userProvider.fetchMe();
-          _user = userProvider.me;
-          _isVerified = _user?.isVerified ?? false;
-          print('DEBUG: Auto-load user success → ${_user?.email}');
-        } else {
-          print('DEBUG: Context chưa sẵn sàng, sẽ load user sau.');
-        }
-      } catch (e) {
-        print('DEBUG: Auto-load user failed: $e');
+    print('DEBUG: Auto-load token success');
 
-        // ⚠️ Không logout ngay — chỉ xóa token nếu thực sự bị 401
-        final err = e.toString().toLowerCase();
-        if (err.contains('401') || err.contains('unauthorized')) {
-          print('DEBUG: Token invalid → logout bắt buộc.');
-          await prefs.remove('access_token');
-          _accessToken = null;
-          _user = null;
-        } else {
-          print('DEBUG: Lỗi khác, vẫn giữ token để thử lại sau.');
-        }
+    try {
+      final context = navigatorKey.currentContext;
+      if (context == null) {
+        print('DEBUG: Context chưa sẵn sàng, sẽ load user sau.');
+        return;
       }
-    } else {
-      print('DEBUG: Không có token → yêu cầu đăng nhập lại.');
+
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.fetchMe();
+      _user = userProvider.me;
+      _isVerified = _user?.isVerified ?? false;
+
+      if (_user == null) {
+        print('DEBUG: Không lấy được user → logout');
+        await prefs.remove('access_token');
+        _accessToken = null;
+        _navigateTo('/login');
+        return;
+      }
+
+      // ĐIỀU HƯỚNG THEO ROLE – AN TOÀN VỚI POST FRAME
+      final isAdmin = _user!.role?.toUpperCase() == 'ADMIN';
+      final targetRoute = isAdmin ? '/admin-home' : '/home';
+
+      print('DEBUG: Auto-load user success → ${_user!.email} (Role: ${_user!.role}) → $targetRoute');
+
+      // CHỜ FRAME ĐẦU TIÊN ĐỂ ĐIỀU HƯỚNG
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigatorKey.currentState?.pushReplacementNamed(targetRoute);
+      });
+
+    } catch (e) {
+      print('DEBUG: Auto-load user failed: $e');
+      final err = e.toString().toLowerCase();
+
+      if (err.contains('401') || err.contains('unauthorized')) {
+        print('DEBUG: Token invalid → logout bắt buộc.');
+        await prefs.remove('access_token');
+        _accessToken = null;
+        _user = null;
+        _navigateTo('/login');
+      } else {
+        print('DEBUG: Lỗi khác, vẫn giữ token để thử lại sau.');
+        // Vẫn điều hướng về login nếu không có user
+        _navigateTo('/login');
+      }
     }
   }
 }
