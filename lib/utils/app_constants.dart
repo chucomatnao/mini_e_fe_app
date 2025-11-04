@@ -22,3 +22,17 @@ class UsersApi {
   static String restore(String id) => '/users/$id/restore';
   static String hardDelete(String id) => '/users/$id/hard';
 }
+
+// SHOP API – MỚI THÊM (giữ nguyên cấu trúc cũ)
+class ShopsApi {
+  // Public
+  static const String shops = '/shops';                    // GET: danh sách + query
+  static const String checkName = '/shops/check-name';      // GET: ?name=...
+
+  // Authenticated
+  static const String register = '/shops/register';         // POST: đăng ký shop
+  static const String myShop = '/shops/me';                 // GET: shop của mình
+
+  // Owner / Admin
+  static String byId(String id) => '/shops/$id';             // PATCH, DELETE
+}
