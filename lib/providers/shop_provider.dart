@@ -1,74 +1,130 @@
+// lib/providers/shop_provider.dart
 import 'package:flutter/material.dart';
 import '../models/shop_model.dart';
 import '../service/shop_service.dart';
 
 class ShopProvider with ChangeNotifier {
-  final ShopService _service = ShopService();
+  final ShopService service; // Dùng named parameter
 
-  Shop? _shop;
-  bool _loading = false;
+  ShopModel? _shop;
+  List<ShopModel> _shops = [];
+  bool _isLoading = false;
   String? _error;
 
-  Shop? get shop => _shop;
-  bool get isLoading => _loading;
+  // Constructor bắt buộc truyền service
+  ShopProvider({required this.service});
+
+  // Getters
+  ShopModel? get shop => _shop;
+  List<ShopModel> get shops => _shops;
+  bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> loadMyShop(String token) async {
-    _loading = true;
-    _error = null;
-    notifyListeners();
+  // ==================== MY SHOP ====================
+  Future<void> loadMyShop() async {
+    _setLoading(true);
     try {
-      _shop = await _service.getMy(token);
+      final shop = await service.getMyShop();
+      _shop = shop;
+      _error = null;
     } catch (e) {
-      _error = e.toString();
+      final message = e.toString();
+
+      // PHÂN BIỆT: 404 → "Chưa có shop" (KHÔNG PHẢI LỖI)
+      if (message.contains('404') || message.contains('Bạn chưa có shop')) {
+        _shop = null;
+        _error = null; // XÓA error → vào _buildNoShop
+      } else {
+        _error = message; // Lỗi thật
+      }
     } finally {
-      _loading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
-  Future<void> register(Map<String, dynamic> data, String token) async {
-    _loading = true;
-    _error = null;
-    notifyListeners();
+  // ==================== REGISTER ====================
+  Future<void> register(Map<String, dynamic> data) async {
+    _setLoading(true);
     try {
-      _shop = await _service.register(data, token);
+      _shop = await service.register(data);
+      _error = null;
     } catch (e) {
       _error = e.toString();
     } finally {
-      _loading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
-  Future<void> update(Map<String, dynamic> data, String token) async {
-    if (_shop == null) return;
-    _loading = true;
-    _error = null;
-    notifyListeners();
+  // ==================== UPDATE ====================
+  Future<void> update(int shopId, Map<String, dynamic> data) async {
+    _setLoading(true);
     try {
-      _shop = await _service.update(_shop!.id, data, token);
+      _shop = await service.update(shopId, data);
+      _error = null;
     } catch (e) {
       _error = e.toString();
     } finally {
-      _loading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
-  Future<void> delete(String token) async {
-    if (_shop == null) return;
-    _loading = true;
-    _error = null;
-    notifyListeners();
+  // ==================== DELETE ====================
+  Future<void> delete(int shopId) async {
+    _setLoading(true);
     try {
-      await _service.delete(_shop!.id, token);
+      await service.delete(shopId);
       _shop = null;
+      _error = null;
     } catch (e) {
       _error = e.toString();
     } finally {
-      _loading = false;
-      notifyListeners();
+      _setLoading(false);
     }
+  }
+
+  // ==================== CHECK NAME ====================
+  Future<bool> checkNameExists(String name) async {
+    try {
+      return await service.checkName(name);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return true; // Giả sử tồn tại nếu lỗi
+    }
+  }
+
+  // ==================== FETCH SHOPS ====================
+  Future<void> fetchShops({
+    String? q,
+    String? status,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    _setLoading(true);
+    try {
+      _shops = await service.getShops(
+        q: q,
+        status: status,
+        page: page,
+        limit: limit,
+      );
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ==================== CLEAR ====================
+  void clearShops() {
+    _shops = [];
+    notifyListeners();
+  }
+
+  // ==================== PRIVATE HELPER ====================
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
   }
 }

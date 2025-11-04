@@ -1,63 +1,76 @@
+// lib/service/shop_service.dart
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import '../models/shop_model.dart';
 import '../utils/app_constants.dart';
+import 'api_client.dart';
 
 class ShopService {
-  final String _base = '${AppConstants.baseUrl}/shops';
+  final ApiClient _api = ApiClient(); // Singleton
 
-  Future<Shop> register(Map<String, dynamic> data, String token) async {
-    final uri = Uri.parse('$_base/register');
-    final resp = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(data),
-    );
-    _check(resp);
-    return Shop.fromJson(jsonDecode(resp.body)['data']);
+  // ==================== REGISTER ====================
+  Future<ShopModel> register(Map<String, dynamic> data) async {
+    final resp = await _api.post(ShopsApi.register, data: data);
+    _throwIfError(resp);
+    return ShopModel.fromJson(resp.data['data']);
   }
 
-  Future<Shop?> getMy(String token) async {
-    final uri = Uri.parse('$_base/me');
-    final resp = await http.get(
-      uri,
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (resp.statusCode == 404) return null;          // chưa có shop
-    _check(resp);
-    return Shop.fromJson(jsonDecode(resp.body)['data']);
+  // ==================== MY SHOP ====================
+  Future<ShopModel> getMyShop() async {
+    final resp = await _api.get(ShopsApi.myShop);
+    _throwIfError(resp);
+    return ShopModel.fromJson(resp.data['data']);
   }
 
-  Future<Shop> update(int id, Map<String, dynamic> data, String token) async {
-    final uri = Uri.parse('$_base/$id');
-    final resp = await http.patch(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(data),
-    );
-    _check(resp);
-    return Shop.fromJson(jsonDecode(resp.body)['data']);
+  // ==================== UPDATE ====================
+  Future<ShopModel> update(int shopId, Map<String, dynamic> data) async {
+    final resp = await _api.patch(ShopsApi.byId('$shopId'), data: data);
+    _throwIfError(resp);
+    return ShopModel.fromJson(resp.data['data']);
   }
 
-  Future<void> delete(int id, String token) async {
-    final uri = Uri.parse('$_base/$id');
-    final resp = await http.delete(
-      uri,
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    _check(resp);
+  // ==================== DELETE ====================
+  Future<void> delete(int shopId) async {
+    final resp = await _api.delete(ShopsApi.byId('$shopId'));
+    _throwIfError(resp);
   }
 
-  void _check(http.Response resp) {
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      final msg = jsonDecode(resp.body)['message'] ?? 'Lỗi không xác định';
-      throw Exception(msg);
+  // ==================== CHECK NAME ====================
+  Future<bool> checkName(String name) async {
+    final resp = await _api.get(
+      ShopsApi.checkName,
+      queryParameters: {'name': name},
+    );
+    _throwIfError(resp);
+    return resp.data['data']['exists'] as bool;
+  }
+
+  // ==================== LIST SHOPS ====================
+  Future<List<ShopModel>> getShops({
+    String? q,
+    String? status,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final Map<String, dynamic> qp = {
+      'page': page,
+      'limit': limit,
+      if (q != null && q.isNotEmpty) 'q': q,
+      if (status != null) 'status': status,
+    };
+
+    final resp = await _api.get(ShopsApi.shops, queryParameters: qp);
+    _throwIfError(resp);
+
+    final List items = resp.data['data']['items'];
+    return items.map((e) => ShopModel.fromJson(e)).toList();
+  }
+
+  // ==================== HELPER ====================
+  void _throwIfError(Response resp) {
+    if (resp.statusCode! >= 400) {
+      final message = resp.data['message'] ?? 'Lỗi không xác định';
+      throw Exception(message);
     }
   }
 }
