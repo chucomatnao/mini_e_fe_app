@@ -1,201 +1,302 @@
-# 🛍️ MINI E-COMMERCE APP — README HOÀN CHỈNH (CẬP NHẬT 03/11/2025)
+TỔNG QUAN ỨNG DỤNG
+Tên ứng dụng: Mini E-commerce
+Nền tảng: Flutter (Web/Mobile) + NestJS (Backend) + MySQL
+Mục đích: Ứng dụng thương mại điện tử đầy đủ tính năng với phân quyền rõ ràng:
 
----
+USER: Mua sắm, quản lý shop cá nhân
+ADMIN: Duyệt shop, quản trị hệ thống
 
-## 📖 TỔNG QUAN ỨNG DỤNG
+Người phát triển: Bùi Đình Khải
+Cập nhật mới nhất: 05/11/2025
 
-**Tên ứng dụng**: Mini E-commerce  
-**Nền tảng**: Flutter (Web/Mobile) + NestJS (Backend) + MySQL (Database)  
-**Mục đích**: Ứng dụng thương mại điện tử **đầy đủ tính năng**: Đăng ký, Đăng nhập, OTP, Quản lý hồ sơ, Quản lý shop, Sản phẩm, Giỏ hàng, Đơn hàng, Đánh giá.  
-**Người phát triển**: [Bùi Đình Khải]  
-**Cập nhật mới nhất**: `03/11/2025`
-
----
-
-## 📂 CẤU TRÚC THƯ MỤC (CHUẨN XÁC 100%)
-
-frontend/
+CẤU TRÚC THƯ MỤC (CẬP NHẬT CHUẨN 100%)
+bashfrontend/
 └── lib/
-├── models/
-│ ├── user_model.dart
-│ ├── product_model.dart
-│ ├── shop_model.dart
-│ ├── order_model.dart
-│ ├── cart_item_model.dart
-│ └── review_model.dart
+├── models/                          # MÔ HÌNH DỮ LIỆU (Data Models)
+│   ├── user_model.dart              # User: id, name, email, role, isVerified
+│   ├── product_model.dart           # Product: id, name, price, shopId
+│   ├── shop_model.dart              # Shop: id, name, slug, status, stats
+│   ├── order_model.dart             # Order: id, total, status, items
+│   ├── cart_item_model.dart         # CartItem: productId, quantity
+│   └── review_model.dart            # Review: rating, comment, userId
 │
-├── providers/
-│ ├── auth_provider.dart
-│ ├── user_provider.dart
-│ ├── product_provider.dart
-│ ├── cart_provider.dart
-│ ├── order_provider.dart
-│ └── shop_provider.dart
+├── providers/                       # TRẠNG THÁI & LOGIC BUSINESS (State Management)
+│   ├── auth_provider.dart           # Đăng nhập, token, auto-login theo role
+│   ├── user_provider.dart           # Lấy/cập nhật profile user
+│   ├── product_provider.dart        # Danh sách sản phẩm, chi tiết
+│   ├── cart_provider.dart           # Giỏ hàng: add/remove/update
+│   ├── order_provider.dart          # Đơn hàng: tạo, theo dõi
+│   └── shop_provider.dart           # Shop: đăng ký, quản lý, duyệt
 │
-├── screens/
-│ ├── login_screen.dart
-│ ├── register_screen.dart
-│ ├── verify_account_screen.dart
-│ ├── forgot_password_screen.dart
-│ ├── reset_otp_screen.dart
-│ ├── home_screen.dart
-│ ├── profile_screen.dart
-│ ├── personal_info_screen.dart
-│ ├── shop_management_screen.dart
-│ ├── shop_register_screen.dart
-│ ├── cart_screen.dart
-│ ├── checkout_screen.dart
-│ ├── product_detail_screen.dart
-│ └── review_screen.dart
+├── screens/                         # MÀN HÌNH UI (Screens)
+│   ├── login_screen.dart            # Form đăng nhập
+│   ├── register_screen.dart         # Form đăng ký
+│   ├── verify_account_screen.dart   # Nhập OTP xác thực
+│   ├── forgot_password_screen.dart  # Quên mật khẩu
+│   ├── reset_otp_screen.dart        # Đặt lại mật khẩu
+│   ├── home_screen.dart             # Trang chủ: sản phẩm nổi bật
+│   ├── profile_screen.dart          # Hồ sơ: menu chức năng
+│   ├── personal_info_screen.dart    # Chỉnh sửa thông tin cá nhân
+│   ├── shop_management_screen.dart  # Quản lý shop cá nhân
+│   ├── shop_register_screen.dart    # Đăng ký shop mới
+│   ├── cart_screen.dart             # Giỏ hàng
+│   ├── checkout_screen.dart         # Thanh toán
+│   ├── product_detail_screen.dart   # Chi tiết sản phẩm
+│   ├── review_screen.dart           # Đánh giá sản phẩm
+│   │
+│   ├── admin_home_screen.dart           ← MỚI: Admin Panel chính
+│   ├── admin_shop_approval_screen.dart  ← MỚI: Duyệt shop PENDING
+│   ├── main_tab_container.dart          ← MỚI: TabBar động theo role
+│   └── shop_list_screen.dart            ← MỚI: Danh sách shop công khai
 │
-├── service/
-│ ├── api_client.dart
-│ ├── auth_service.dart
-│ ├── user_service.dart
-│ ├── product_service.dart
-│ ├── order_service.dart
-│ ├── cart_service.dart
-│ └── shop_service.dart
+├── service/                         # GỌI API (HTTP Services)
+│   ├── api_client.dart              # Dio config, interceptor, refresh token
+│   ├── auth_service.dart            # POST /auth/login, register, OTP
+│   ├── user_service.dart            # GET/PATCH /users/me
+│   ├── product_service.dart         # GET /products
+│   ├── order_service.dart           # POST /orders
+│   ├── cart_service.dart            # POST /cart/add
+│   └── shop_service.dart            # POST /shops/register, GET /shops
 │
-├── utils/
-│ └── app_constants.dart
+├── utils/                           # TIỆN ÍCH (Utils)
+│   └── app_constants.dart           # Base URL, endpoints (UsersApi, ShopsApi)
 │
-├── widgets/
-│ ├── custom_button.dart
-│ ├── product_card.dart
-│ ├── review_card.dart
-│ └── loading_indicator.dart
+├── widgets/                         # COMPONENT UI TÁI SỬ DỤNG
+│   ├── custom_button.dart           # Nút tùy chỉnh
+│   ├── product_card.dart            # Card sản phẩm
+│   ├── review_card.dart             # Card đánh giá
+│   └── loading_indicator.dart       # Spinner loading
 │
-└── main.dart
+└── main.dart                        # ENTRY POINT: Providers, Routes
 
-yaml
-Sao chép mã
+CẬP NHẬT MỚI NHẤT (05/11/2025)
 
----
 
-## 🚀 CẬP NHẬT MỚI NHẤT (03/11/2025)
 
-| Thành phần | Tình trạng | Ghi chú |
-|-------------|------------|---------|
-| **Profile & Personal Info** | ✅ Hoàn thiện | Giữ session, sửa reload, không bị logout |
-| **CookieManager Web** | ✅ Đã fix | Tự động disable trên Web |
-| **AuthProvider** | ✅ Tối ưu | Giữ token sau reload, load user từ cache |
-| **UserProvider** | ✅ Fix loop | Chặn gọi lặp vô hạn `/users/me` |
-| **main.dart** | ✅ Chuẩn hoá | Khởi tạo tuần tự `ApiClient → AuthProvider` |
-| **api_client.dart** | ✅ Update | Không thêm CookieManager khi `kIsWeb = true` |
-| **/api/users/me** | ✅ Hoạt động ổn định | Load user sau reload, không logout |
-| **PATCH /api/users/:id** | ✅ Sẵn sàng | Dùng cho cập nhật hồ sơ |
-| **Profile UI** | ✅ Giữ nguyên giao diện cũ | Menu đầy đủ: Thông tin cá nhân, Shop, Voucher, Đăng xuất |
-| **Personal Info UI** | ✅ Giữ nút quay lại | Reload không bị logout |
 
----
 
-## 💡 LUỒNG HOẠT ĐỘNG CHÍNH
 
-### 🔑 **Đăng nhập / Đăng ký / OTP**
-```dart
-AuthProvider.login(email, password)
-↓
-AuthService.login()
-↓
-POST /api/auth/login
-↓
-Lưu accessToken vào SharedPreferences
-↓
-Tự động gọi /api/users/me → load user
-👤 Cập nhật thông tin cá nhân (Profile)
-dart
-Sao chép mã
-PersonalInfoScreen → UserProvider.updateProfile()
-↓
-PATCH /api/users/:id
-↓
-UserModel.fromJson(data['data'])
-↓
-SnackBar("Cập nhật thành công!")
-🧾 Reload Trang Web
-dart
-Sao chép mã
-main.dart → AuthProvider.init()
-↓
-SharedPreferences.load('accessToken')
-↓
-Nếu có token → gọi /api/users/me
-↓
-User giữ nguyên → không bị logout
-🔗 API ENDPOINTS (BACKEND)
-Method	Endpoint	Mô tả
-POST	/api/auth/register	Đăng ký
-POST	/api/auth/login	Đăng nhập
-POST	/api/auth/request-verify	Gửi OTP xác thực
-POST	/api/auth/verify-account	Xác minh tài khoản
-POST	/api/auth/forgot-password	Quên mật khẩu
-POST	/api/auth/reset-password	Đặt lại mật khẩu
-GET	/api/users/me	Lấy thông tin người dùng hiện tại
-PATCH	/api/users/:id	Cập nhật hồ sơ
-GET	/api/products	Danh sách sản phẩm
-POST	/api/cart/add	Thêm sản phẩm vào giỏ
-POST	/api/orders/create	Tạo đơn hàng mới
-GET	/api/shops	Danh sách shop
-POST	/api/shops/register	Đăng ký shop mới
 
-⚙️ CẤU HÌNH VÀ CHẠY ỨNG DỤNG
-🔸 Backend (NestJS)
-bash
-Sao chép mã
-cd backend
-npm install
-cp .env.example .env
-npm run start:dev
-# API chạy tại: http://localhost:3000/api
-🔹 Frontend (Flutter)
-bash
-Sao chép mã
-cd frontend
-flutter pub get
-flutter run -d chrome
-# hoặc
-flutter run -d windows
-🧠 LƯU Ý VÀ FIX LỖI THƯỜNG GẶP
-Lỗi	Nguyên nhân	Cách khắc phục
-Don't use the manager in Web environments	Dùng CookieManager trên web	Đã fix: disable tự động trong api_client.dart
-Reload bị logout	AuthProvider chưa load token xong	Đã fix: chờ init() hoàn tất
-Spam /api/users/me	fetchMe() gọi liên tục	Đã fix: thêm _hasFetched flag
-Mất nút quay lại ở Personal Info	Reload làm mất stack Navigator	Đã fix: AppBar.leading luôn có nút Back
-Auto logout khi lỗi network	Exception xử lý sai	Đã fix trong auth_provider.dart
 
-🧩 FILE QUAN TRỌNG
-File	Mục đích
-lib/main.dart	Khởi tạo app, provider, route
-lib/service/api_client.dart	Cấu hình Dio, baseUrl, disable CookieManager web
-lib/providers/auth_provider.dart	Giữ token, auto-load user
-lib/providers/user_provider.dart	Fetch và update profile
-lib/screens/profile_screen.dart	Giao diện Hồ sơ, menu chức năng
-lib/screens/personal_info_screen.dart	Trang chỉnh sửa thông tin
-lib/utils/app_constants.dart	Base URL, endpoint /api
-lib/service/user_service.dart	Gọi API GET /me, PATCH /:id
 
-🧾 DANH SÁCH TÍNH NĂNG ĐÃ HOÀN THÀNH
-✅ Đăng ký, Đăng nhập, Xác minh OTP
-✅ Lưu token bằng SharedPreferences
-✅ Gọi /api/users/me khi reload
-✅ Cập nhật hồ sơ (name, phone, birthday, gender)
-✅ Tự động hiển thị SnackBar khi thành công / lỗi
-✅ Giữ giao diện Profile + Personal Info hoàn chỉnh
-✅ Hoạt động mượt trên Web và Mobile
-✅ Bảo mật JWT qua Header Authorization
-✅ Không còn lỗi lặp request hoặc logout khi refresh
 
-🌟 ĐỊNH HƯỚNG PHÁT TRIỂN TIẾP
-Mục tiêu	Mô tả
-Upload ảnh đại diện	Dùng multipart/form-data
-Quản lý đơn hàng	Thêm /api/orders/me
-Tích hợp thanh toán	Stripe / VNPay
-Dark mode	Cho toàn bộ app
-GraphQL hỗ trợ song song	REST + GraphQL
-PWA build	Tối ưu hóa bản Web
 
-🧑‍💻 TÁC GIẢ
-Bùi Đình Khải
-📧 bkhaidinh@gmail.com
-💼 Mini E Project — 2025
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Thành phầnTình trạngGhi chúPhân quyền ADMIN / USERHoàn thiệnTự động điều hướng theo roleADMIN PANELHoàn thiệnadmin_home_screen.dart + TabBarDuyệt Shop (PENDING → ACTIVE)Hoàn thiệnadmin_shop_approval_screen.dartDanh sách Shop công khaiHoàn thiệnshop_list_screen.dartTabBar chính (MainTabContainer)Hoàn thiệnGiao diện chung cho cả USER & ADMINĐăng xuất từ ADMINHoàn thiệnNút logout + xác nhậnAuto-login theo roleHoàn thiệninit() kiểm tra role?.toUpperCase()Backend trả roleHoàn thiện/api/auth/login trả role: "ADMIN"
+
+FILE MỚI & CHỨC NĂNG CHI TIẾT
+
+1. admin_home_screen.dart
+   Mục đích: Màn hình chính của ADMIN
+   Chức năng:
+
+Hiển thị "ADMIN PANEL"
+Nút "Duyệt Shop" → chuyển đến admin_shop_approval_screen
+Nút "Đăng xuất" ở AppBar
+Xác nhận trước khi logout
+
+dartIconButton(
+icon: Icon(Icons.logout),
+onPressed: () => showDialog → authProvider.logout()
+)
+
+2. admin_shop_approval_screen.dart
+   Mục đích: ADMIN duyệt shop chờ phê duyệt
+   Chức năng:
+
+Gọi GET /api/shops?status=PENDING
+Hiển thị danh sách shop PENDING
+Nút "Duyệt" → PATCH /api/shops/:id → status: ACTIVE
+Tự động refresh danh sách sau khi duyệt
+
+dartShopService().update(shop.id, {'status': 'ACTIVE'})
+
+3. main_tab_container.dart
+   Mục đích: Giao diện chung cho cả USER và ADMIN
+   Chức năng:
+
+TabBar + TabBarView
+Tự động hiển thị tab phù hợp theo role
+
+USER: Home, Shop, Cart, Profile
+ADMIN: Tổng quan, Duyệt Shop
+
+
+
+dartConsumer<AuthProvider>(
+builder: (ctx, auth, _) {
+final isAdmin = auth.user?.role?.toUpperCase() == 'ADMIN';
+return isAdmin ? AdminTabs() : UserTabs();
+}
+)
+
+4. shop_list_screen.dart
+   Mục đích: Hiển thị danh sách shop công khai
+   Chức năng:
+
+Gọi GET /api/shops
+Hiển thị tất cả shop (không cần đăng nhập)
+Click shop → ShopDetailScreen
+Hỗ trợ phân trang, tìm kiếm
+
+
+LUỒNG HOẠT ĐỘNG CHÍNH (CẬP NHẬT)
+1. Đăng nhập → Phân quyền tự động
+   dartAuthProvider.login()
+   ↓
+   Lưu accessToken vào SharedPreferences
+   ↓
+   _user.role == 'ADMIN' → /admin-home
+   _user.role != 'ADMIN' → /home
+2. Khởi động app → Auto-login theo role
+   dartmain.dart → AuthProvider.init()
+   ↓
+   SharedPreferences.get('access_token')
+   ↓
+   UserProvider.fetchMe()
+   ↓
+   _user.role?.toUpperCase() == 'ADMIN'
+   → pushReplacementNamed('/admin-home')
+   → pushReplacementNamed('/home')
+3. ADMIN duyệt shop
+   dartadmin_shop_approval_screen.dart
+   ↓
+   ShopProvider.fetchShops(status: 'PENDING')
+   ↓
+   Hiển thị danh sách
+   ↓
+   Click "Duyệt" → ShopService.update(id, {status: 'ACTIVE'})
+   ↓
+   SnackBar + Refresh danh sách
+4. Người bán thấy shop được duyệt
+   dartshop_management_screen.dart
+   ↓
+   ShopProvider.loadMyShop()
+   ↓
+   status == 'ACTIVE' → Hiển thị "Hoạt động"
+
+API ENDPOINTS (BACKEND — ĐÃ HOÀN THIỆN)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+MethodEndpointMô tảQuyềnPOST/api/auth/loginĐăng nhập, trả rolePublicGET/api/shops?status=PENDINGLấy shop chờ duyệtADMINPATCH/api/shops/:idCập nhật trạng tháiADMINGET/api/shopsDanh sách shop công khaiPublicPOST/api/shops/registerĐăng ký shopUSER
+
+DANH SÁCH TÍNH NĂNG ĐÃ HOÀN THÀNH
+
+Đăng ký, Đăng nhập, OTP, Quên mật khẩu
+Phân quyền ADMIN / USER
+ADMIN PANEL với duyệt shop
+Danh sách shop công khai
+Đăng ký shop → chờ duyệt → được duyệt
+Đăng xuất an toàn từ ADMIN
+Auto-login theo role
+Hoạt động mượt trên Web & Mobile
+
+
+ĐỊNH HƯỚNG PHÁT TRIỂN TIẾP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mục tiêuMô tảUpload logo/cover shopDùng S3 + presigned URLXem sản phẩm của shopGET /api/shops/:id/productsThống kê doanh thu ADMINDashboard với biểu đồChặn đăng sản phẩm nếu shop chưa ACTIVEKiểm tra shop.statusGửi email khi duyệt shopEmailService.sendApproval()
