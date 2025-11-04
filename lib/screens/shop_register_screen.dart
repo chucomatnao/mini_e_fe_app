@@ -1,141 +1,102 @@
+// lib/screens/shop_register_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import '../providers/shop_provider.dart';
+import '../widgets/custom_button.dart';
+import '../widgets/loading_indicator.dart';
 
 class ShopRegisterScreen extends StatefulWidget {
-  const ShopRegisterScreen({Key? key}) : super(key: key);
+  const ShopRegisterScreen({super.key});
 
   @override
   State<ShopRegisterScreen> createState() => _ShopRegisterScreenState();
 }
 
+// Thay thế toàn bộ nội dung file
 class _ShopRegisterScreenState extends State<ShopRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  final _addrCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _descCtrl.dispose();
-    _addrCtrl.dispose();
-    super.dispose();
-  }
-
-  void _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-
-    final data = {
-      'name': _nameCtrl.text.trim(),
-      'description': _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-      'address': _addrCtrl.text.trim(),
-    };
-
-    try {
-      await shopProvider.register(data, authProvider.accessToken!);
-      if (shopProvider.error != null) {
-        _showSnackBar(shopProvider.error!, isError: true);
-      } else {
-        _showSnackBar('Đăng ký shop thành công!');
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      _showSnackBar('Lỗi: $e', isError: true);
-    }
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-      ),
-    );
-  }
+  bool _checkingName = false;
+  bool _nameExists = false;
 
   @override
   Widget build(BuildContext context) {
     final shopProvider = Provider.of<ShopProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Đăng ký Shop'),
-        backgroundColor: const Color(0xFF0D6EFD),
-        foregroundColor: Colors.white,
-      ),
+      appBar: AppBar(title: const Text('Đăng ký Shop')),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
+          child: ListView(
             children: [
+              // Tên shop
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Tên Shop *',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'Tên shop *',
+                  suffixIcon: _checkingName ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : null,
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập tên shop';
+                onChanged: (value) async {
+                  if (value.trim().length > 2) {
+                    setState(() => _checkingName = true);
+                    _nameExists = await shopProvider.checkNameExists(value.trim());
+                    setState(() => _checkingName = false);
                   }
+                },
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Bắt buộc';
+                  if (_nameExists) return 'Tên shop đã tồn tại';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
+
+              // Email
+              TextFormField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email *'),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Bắt buộc';
+                  if (!v.contains('@')) return 'Email không hợp lệ';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Mô tả
               TextFormField(
                 controller: _descCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Mô tả (tùy chọn)',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _addrCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Địa chỉ *',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập địa chỉ';
-                  }
-                  return null;
-                },
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Mô tả *'),
+                validator: (v) => v?.trim().isEmpty ?? true ? 'Bắt buộc' : null,
               ),
               const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: shopProvider.isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D6EFD),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: shopProvider.isLoading
-                      ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                      : const Text(
-                    'Đăng ký Shop',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ),
+
+              ElevatedButton(
+                onPressed: shopProvider.isLoading ? null : () async {
+                  if (_formKey.currentState!.validate()) {
+                    await shopProvider.register({
+                      'name': _nameCtrl.text.trim(),
+                      'email': _emailCtrl.text.trim().toLowerCase(),
+                      'description': _descCtrl.text.trim(),
+                    });
+                    if (shopProvider.error == null) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Đăng ký thành công! Chờ duyệt...')),
+                      );
+                    }
+                  }
+                },
+                child: shopProvider.isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Đăng ký Shop'),
               ),
             ],
           ),
