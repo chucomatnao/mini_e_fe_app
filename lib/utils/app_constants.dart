@@ -36,3 +36,18 @@ class ShopsApi {
   // Owner / Admin
   static String byId(String id) => '/shops/$id';             // PATCH, DELETE
 }
+
+// ============================================================================
+// PRODUCT API – TÁCH RIÊNG CHO DỄ QUẢN LÝ
+// ============================================================================
+class ProductApi {
+  // Public
+  static const String products = '/products';                    // GET: danh sách + query
+  static const String search = '/products/search';               // GET: ?q=...
+
+  // Authenticated
+  static String byId(int id) => '/products/$id';                 // GET: chi tiết
+  static String variants(int productId) => '/products/$productId/variants'; // GET: danh sách variants
+  static String generateVariants(int productId) => '/products/$productId/variants/generate'; // POST
+  static String variant(int productId, int variantId) => '/products/$productId/variants/$variantId'; // PATCH, DELETE
+}
