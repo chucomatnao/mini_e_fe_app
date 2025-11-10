@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
-import '../models/user_model.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -32,7 +31,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF4F4F4F)),
-      title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      ),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
@@ -42,7 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_hasFetched) return;
     _hasFetched = true;
 
-    if (auth.accessToken != null && (userProvider.me == null && !userProvider.isLoading)) {
+    if (auth.accessToken != null && userProvider.me == null && !userProvider.isLoading) {
       try {
         await userProvider.fetchMe();
       } catch (e) {
@@ -51,6 +53,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+    // ✅ Gọi sau khi widget build xong để tránh lỗi “markNeedsBuild during build”
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfile(auth, userProvider);
+    });
   }
 
   @override
@@ -65,18 +80,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SafeArea(
         child: Consumer2<AuthProvider, UserProvider>(
           builder: (context, auth, userProvider, child) {
-            _loadProfile(auth, userProvider); // ✅ gọi fetchMe() 1 lần khi cần
-
             final currentUser = userProvider.me ?? auth.user;
 
-            if (currentUser == null) {
-              // Nếu reload xong mà không có user → chuyển về login
-              if (!_hasFetched && auth.accessToken == null) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) Navigator.pushReplacementNamed(context, '/login');
-                });
-              }
+            if (auth.accessToken == null) {
+              Future.microtask(() => Navigator.pushReplacementNamed(context, '/login'));
               return const Center(child: CircularProgressIndicator());
+            }
+
+            if (userProvider.isLoading && currentUser == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (currentUser == null) {
+              return const Center(child: Text('Không tải được thông tin người dùng'));
             }
 
             return SingleChildScrollView(
@@ -94,7 +110,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           currentUser.name?.isNotEmpty == true
                               ? currentUser.name![0].toUpperCase()
                               : 'U',
-                          style: const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -112,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   const SizedBox(height: 24),
 
-                  // MENU GIỮ NGUYÊN
+                  // MENU
                   _menuTile(
                     context,
                     icon: Icons.home_outlined,
