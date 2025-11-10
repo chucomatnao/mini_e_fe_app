@@ -14,7 +14,8 @@ import 'service/api_client.dart';
 import 'service/shop_service.dart';
 
 // Models
-import 'models/shop_model.dart'; // THÊM DÒNG NÀY (fix lỗi 1)
+import 'models/shop_model.dart';
+import 'models/product_model.dart'; // ← THÊM: CHO PRODUCT DETAIL
 
 // Screens
 import 'screens/admin_shop_approval_screen.dart';
@@ -32,6 +33,11 @@ import 'screens/personal_info_screen.dart';
 import 'screens/shop_list_screen.dart';
 import 'screens/shop_detail_screen.dart';
 
+// === MỚI THÊM: SCREEN PRODUCT ===
+import 'screens/product_detail_screen.dart';
+import 'screens/add_product_screen.dart';
+import 'screens/add_variant_screen.dart'; // (Tùy chọn)
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiClient().init();
@@ -44,18 +50,20 @@ void main() async {
         ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
-
-        // FIX LỖI 2: Dùng named parameter 'service'
-        ChangeNotifierProvider(
-          create: (_) => ShopProvider(service: ShopService()),
-        ),
+        ChangeNotifierProvider(create: (_) => ShopProvider(service: ShopService())),
       ],
       child: const MyApp(),
     ),
   );
 
+  // SAU KHI INIT → GỌI FETCH PRODUCTS
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await authProvider.init();
+
+    final context = AuthProvider.navigatorKey.currentContext;
+    if (context != null) {
+      Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+    }
   });
 }
 
@@ -75,25 +83,46 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: '/login',
       routes: {
+        // === AUTH & USER ===
         '/login': (context) => const LoginScreen(),
-        '/register': (context) => RegisterScreen(),
-        '/home': (context) => HomeScreen(),
-        '/forgot-password': (context) => ForgotPasswordScreen(),
+        '/register': (context) =>  RegisterScreen(),
+        '/home': (context) {
+          // TỰ ĐỘNG FETCH KHI VÀO HOME
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+          });
+          return const HomeScreen();
+        },
+        '/forgot-password': (context) =>  ForgotPasswordScreen(),
         '/verify-account': (context) => const VerifyAccountScreen(),
-        '/reset-otp': (context) => ResetOtpScreen(),
+        '/reset-otp': (context) =>  ResetOtpScreen(),
         '/profile': (context) => const ProfileScreen(),
+
+        // === SHOP ===
         '/shop-management': (context) => const ShopManagementScreen(),
         '/shop-register': (context) => const ShopRegisterScreen(),
         '/personal-info': (context) => const PersonalInfoScreen(),
-
         '/shops': (context) => const ShopListScreen(),
-        '/admin-home': (context) => AdminHomeScreen(),
-        '/admin-shop-approval': (context) => AdminShopApprovalScreen(),
+        '/admin-home': (context) =>  AdminHomeScreen(),
+        '/admin-shop-approval': (context) =>  AdminShopApprovalScreen(),
 
-        // FIX LỖI 1: Dùng ShopModel (đã import)
+        // === SHOP DETAIL (có argument) ===
         '/shop-detail': (context) {
           final shop = ModalRoute.of(context)!.settings.arguments as ShopModel;
           return ShopDetailScreen(shop: shop);
+        },
+
+        // === PRODUCT: MỚI THÊM ===
+        '/product-detail': (context) {
+          final product = ModalRoute.of(context)!.settings.arguments as ProductModel;
+          return ProductDetailScreen(product: product);
+        },
+
+        '/add-product': (context) => const AddProductScreen(),
+        '/add-variant': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          final productId = args['productId'] as int;
+          return AddVariantScreen(productId: productId);
         },
       },
     );
