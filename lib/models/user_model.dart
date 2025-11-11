@@ -12,6 +12,7 @@ class UserModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? deletedAt;
+  final int shopId;
 
   UserModel({
     this.id,
@@ -25,6 +26,7 @@ class UserModel {
     this.createdAt,
     this.updatedAt,
     this.deletedAt,
+    required this.shopId,
   });
 
   // ════════════════════════════════════════════════════════════════════════
@@ -39,6 +41,7 @@ class UserModel {
       birthday: json['birthday']?.toString(),
       gender: json['gender']?.toString(),
       role: json['role']?.toString(),
+      shopId: json['shopId'] ?? 0,
       isVerified: json['isVerified'] as bool?,
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
       updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
@@ -59,6 +62,7 @@ class UserModel {
       'gender': gender,
       'role': role,
       'isVerified': isVerified,
+      'shopId': shopId, // THÊM: Để serialize shopId nếu cần
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'deletedAt': deletedAt?.toIso8601String(),
@@ -77,7 +81,7 @@ class UserModel {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  //                          COPY WITH (TIỆN CHO UPDATE)
+  //                          COPY WITH (TIỆN CHO UPDATE) - SỬA LỖI SHOPID
   // ════════════════════════════════════════════════════════════════════════
   UserModel copyWith({
     String? id,
@@ -91,6 +95,7 @@ class UserModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
+    int? shopId, // THÊM: Parameter cho shopId
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -104,6 +109,7 @@ class UserModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
+      shopId: shopId ?? this.shopId, // THÊM: Pass shopId vào constructor
     );
   }
 }
