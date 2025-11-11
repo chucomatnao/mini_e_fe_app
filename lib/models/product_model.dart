@@ -1,4 +1,6 @@
-// File chứa model cho dữ liệu sản phẩm từ API
+// lib/models/product_model.dart
+import 'variant_model.dart'; // THÊM
+
 class ProductModel {
   final int id;
   final String title;
@@ -7,6 +9,8 @@ class ProductModel {
   final String imageUrl;
   final int? stock;
   final String? status;
+  final int shopId;
+  final List<VariantModel>? variants; // THÊM
 
   ProductModel({
     required this.id,
@@ -16,26 +20,42 @@ class ProductModel {
     required this.imageUrl,
     this.stock,
     this.status,
+    required this.shopId,
+    this.variants, // THÊM
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
-    // Nếu backend trả về images: [{url: "...", is_main: 1}, ...]
-    String imageUrl = '';
-    if (json['images'] != null && (json['images'] as List).isNotEmpty) {
-      // Ưu tiên ảnh có is_main = 1
-      final mainImage = (json['images'] as List)
-          .firstWhere((img) => img['is_main'] == 1, orElse: () => json['images'][0]);
-      imageUrl = mainImage['url'] ?? '';
+    // Parse variants từ optionSchema
+    List<VariantModel>? variants;
+    final optionSchema = json['optionSchema'];
+    if (optionSchema is List && optionSchema.isNotEmpty) {
+      variants = optionSchema.map((e) => VariantModel.fromJson(e)).toList();
     }
 
     return ProductModel(
       id: json['id'] ?? 0,
-      title: json['title'] ?? 'Không có tên',
-      description: json['description'],
-      price: double.tryParse(json['price'].toString()) ?? 0.0,
-      imageUrl: imageUrl,
-      stock: json['stock'],
-      status: json['status'],
+      title: json['title']?.toString() ?? 'Không có tên',
+      description: json['description']?.toString(),
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      imageUrl: _parseImageUrl(json['images']),
+      stock: int.tryParse(json['stock']?.toString() ?? '0'),
+      status: json['status']?.toString(),
+      shopId: json['shopId'] ?? 0,
+      variants: variants, // THÊM
     );
+  }
+
+  // Helper: parse imageUrl (giữ nguyên logic cũ)
+  static String _parseImageUrl(dynamic images) {
+    if (images == null) return '';
+    if (images is List && images.isNotEmpty) {
+      try {
+        final main = images.firstWhere((img) => img['is_main'] == 1, orElse: () => images[0]);
+        return main['url']?.toString() ?? '';
+      } catch (_) {
+        return images[0]['url']?.toString() ?? '';
+      }
+    }
+    return '';
   }
 }
