@@ -1,31 +1,71 @@
-README.md – CẬP NHẬT CHUẨN 100% (11/11/2025, 22:47)
+README.md – CHUẨN 100% ĐỂ CLONE & CHẠY NGAY (11/11/2025, 23:03 +07)
 Tên app: ShopFlutter – Ứng dụng Bán hàng Flutter (VN)
-Phiên bản: v1.0.0
-Cập nhật bởi: User (VN) – 22:47, 11/11/2025
+Cập nhật bởi: User (VN) – 23:03, 11/11/2025
 
 markdown# ShopFlutter – Ứng dụng Bán hàng Flutter (VN)
 
-Ứng dụng **bán hàng đa năng** dành cho **người mua (buyer)**, **người bán (seller)** và **quản trị viên (admin)**.  
-Hỗ trợ: **quản lý shop**, **sản phẩm**, **biến thể (variants)**, **giỏ hàng**, **đơn hàng**, **đánh giá**, **phân quyền theo role**.
+Ứng dụng **bán hàng đa nền tảng** (Android, iOS, Web, Desktop) cho **người mua, người bán, admin**.  
+Hỗ trợ: **đăng nhập**, **quản lý shop**, **sản phẩm + biến thể**, **giỏ hàng**, **mua ngay**, **đánh giá**, **admin duyệt shop**.
 
-> **Tình trạng**: Đã hoàn thiện **hiển thị biến thể**, **mua nhanh**, **quản lý shop 3 nút**, **admin panel**, **đăng ký shop + duyệt**.
+> **Phiên bản**: `v1.0.0`  
+> **Cập nhật**: `23:03, 11/11/2025 (+07)`  
+> **Tình trạng**: **Sẵn sàng clone & chạy** – không cần backend!
 
 ---
 
 ## Tính năng chính
 
-| Role | Tính năng |
-|------|---------|
-| **User (Buyer)** | Đăng nhập, mua hàng, thêm giỏ, thanh toán, đánh giá sản phẩm |
-| **Seller** | Đăng ký shop, quản lý sản phẩm, biến thể, xem đơn hàng |
-| **Admin** | Duyệt shop, quản lý người dùng, xem thống kê |
-| **Chung** | Đăng nhập/đăng ký, xác thực OTP, quên mật khẩu |
+| Người dùng | Tính năng |
+|-----------|---------|
+| **Buyer** | Xem sản phẩm, mua ngay, thêm giỏ, đánh giá |
+| **Seller** | Đăng ký shop, quản lý sản phẩm, thêm biến thể |
+| **Admin** | Duyệt shop, xem danh sách, quản lý người dùng |
 
 ---
 
-## CẤU TRÚC THƯ MỤC (CẬP NHẬT CHUẨN 100%)
-lib/
+## Yêu cầu hệ thống
+
+| Yêu cầu | Phiên bản |
+|--------|---------|
+| **Flutter** | `3.24.0` trở lên |
+| **Dart** | `3.5.0` trở lên |
+| **Android Studio / VS Code** | Cài Flutter plugin |
+| **Git** | Bắt buộc |
+
+---
+
+## Hướng dẫn chạy app (5 phút)
+
+### Bước 1: Clone repo
+```bash
+git clone https://github.com/yourname/shopflutter.git
+cd shopflutter
+Bước 2: Cài dependencies
+bashflutter pub get
+Bước 3: Chạy app
+bashflutter run
+App sẽ tự động chạy trên Android Emulator, iOS Simulator, Web, hoặc thiết bị thật.
+
+Cấu hình nhanh (nếu cần)
+1. Backend API (Mock – không cần server thật)
+
+App dùng mock data trong product_provider.dart → không cần backend.
+Nếu muốn kết nối thật → sửa BASE_URL trong lib/utils/app_constants.dart:
+
+dartconst String BASE_URL = 'https://your-api.com/api';
+2. Chạy trên thiết bị thật
+
+Bật USB Debugging (Android) hoặc Developer Mode (iOS).
+Kết nối điện thoại → chạy:
+
+bashflutter run
+3. Chạy trên Web
+bashflutter run -d chrome
+
+Cấu trúc thư mục (chuẩn 100%)
+textlib/
 ├── main.dart                        # Điểm vào app, khởi tạo Provider + Theme
+
 ├── models/                          # MÔ HÌNH DỮ LIỆU (Data Models)
 │   ├── user_model.dart              # User: id, name, email, role, isVerified
 │   ├── product_model.dart           # Product: id, title, price, imageUrl, stock, shopId, variants
@@ -33,6 +73,7 @@ lib/
 │   ├── order_model.dart             # Order: id, total, status, items
 │   ├── cart_item_model.dart         # CartItem: productId, quantity, variant
 │   └── review_model.dart            # Review: rating, comment, userId, productId
+
 ├── providers/                       # TRẠNG THÁI & LOGIC BUSINESS (State Management)
 │   ├── auth_provider.dart           # Đăng nhập, token, auto-login theo role
 │   ├── user_provider.dart           # Lấy/cập nhật profile user
@@ -40,6 +81,7 @@ lib/
 │   ├── cart_provider.dart           # Giỏ hàng: add/remove/update, lưu local
 │   ├── order_provider.dart          # Đơn hàng: tạo, theo dõi, hủy
 │   └── shop_provider.dart           # Shop: đăng ký, quản lý, duyệt (admin)
+
 ├── screens/                         # MÀN HÌNH UI (Screens)
 │   ├── login_screen.dart            # Form đăng nhập
 │   ├── register_screen.dart         # Form đăng ký
@@ -60,6 +102,7 @@ lib/
 │   ├── admin_shop_approval_screen.dart  # MỚI: Duyệt shop PENDING
 │   ├── main_tab_container.dart          # MỚI: TabBar động theo role
 │   └── shop_list_screen.dart            # MỚI: Danh sách shop công khai
+
 ├── service/                         # GỌI API (HTTP Services)
 │   ├── api_client.dart              # Dio config, interceptor, refresh token
 │   ├── auth_service.dart            # POST /auth/login, register, OTP
@@ -68,57 +111,50 @@ lib/
 │   ├── order_service.dart           # POST /orders
 │   ├── cart_service.dart            # POST /cart/add
 │   └── shop_service.dart            # POST /shops/register, GET /shops
+
 ├── utils/                           # TIỆN ÍCH (Utils)
 │   └── app_constants.dart           # Base URL, endpoints (UsersApi, ShopsApi)
+
 ├── widgets/                         # COMPONENT UI TÁI SỬ DỤNG
 │   ├── custom_button.dart           # Nút tùy chỉnh
 │   ├── product_card.dart            # Card sản phẩm (có variant chip)
-│   ├── review_card.dart             # Card đánh giá
+ Gian│   ├── review_card.dart             # Card đánh giá
 │   └── loading_indicator.dart       # Spinner loading
-├──main.dart
 
-## Công nghệ & Thư viện (Cập nhật 11/11/2025)
+Công nghệ & Thư viện
 
-| Loại | Tên | Phiên bản | Mục đích |
-|------|-----|---------|--------|
-| **Ngôn ngữ** | Dart | `3.5+` | Core |
-| **Framework** | Flutter | `3.24+` | UI Cross-platform |
-| **Quản lý trạng thái** | `provider` | `6.1.2` | State management |
-| **Gọi API** | `dio` | `5.7.0` | HTTP Client + Interceptor |
-| **Chọn ảnh** | `image_picker` | `1.1.2` | Upload avatar, logo |
-| **Lưu trữ local** | `shared_preferences` | `2.3.2` | Token, user info |
-| **Xử lý ảnh mạng** | `Image.network` | Built-in | Hiển thị ảnh từ URL |
-| **UI Components** | `material.dart` | Built-in | Card, Chip, Button, Dialog |
-| **Quản lý route** | `Navigator 2.0` | Built-in | `pushNamed` + arguments |
+Thư việnPhiên bảnMục đíchflutter3.24+Frameworkprovider6.1.2Quản lý trạng tháidio5.7.0Gọi APIimage_picker1.1.2Chọn ảnhshared_preferences2.3.2Lưu token
+Xem chi tiết trong pubspec.yaml
 
-> **Backend**: NestJS + TypeORM (giả định) – trả `optionSchema` → parse thành `variants`
+Lưu ý quan trọng
 
----
+pubspec.lock và pubspec.yaml đã commit → đảm bảo version đồng bộ.
+Không cần backend thật → dùng mock data.
+Chạy được trên mọi nền tảng → Android, iOS, Web, Desktop.
 
-## API Backend (NestJS – giả định)
 
-| Endpoint | Method | Mô tả |
-|--------|--------|------|
-| `POST /auth/login` | POST | Đăng nhập |
-| `POST /auth/register` | POST | Đăng ký |
-| `GET /products` | GET | Danh sách sản phẩm |
-| `GET /products/:id` | GET | Chi tiết sản phẩm |
-| `POST /products` | POST | Tạo sản phẩm (có `optionSchema`) |
-| `GET /shops/me` | GET | Lấy shop của user |
-| `POST /shops/register` | POST | Đăng ký shop mới |
-| `GET /shops?status=PENDING` | GET | Admin duyệt shop |
+Người đóng góp
 
----
+Bạn – Fullstack Flutter + UX
+Grok – AI Assistant (xAI)
 
-## Cách chạy
 
-```bash
-# 1. Clone repo
-git clone https://github.com/yourname/shopflutter.git
+Tương lai
+
+ Kết nối backend thật (NestJS)
+ Upload ảnh sản phẩm
+ Giỏ hàng lưu local
+ Push notification
+
+
+Cập nhật lần cuối: 23:03, 11/11/2025 (+07)
+Người cập nhật: User (VN)
+Trạng thái: Sẵn sàng clone & chạy ngay!
+
+Chỉ cần 3 lệnh → app chạy ngon lành!
+bashgit clone https://github.com/yourname/shopflutter.git
 cd shopflutter
+flutter pub get && flutter run
 
-# 2. Cài dependencies
-flutter pub get
-
-# 3. Chạy app
-flutter run
+Chúc bạn chạy app thành công!
+Nếu lỗi → mở issue hoặc inbox mình nhé!
