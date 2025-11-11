@@ -60,8 +60,8 @@ class ProductProvider with ChangeNotifier {
   }
 
   // ========================================================================
-  // 2. LẤY DANH SÁCH SẢN PHẨM
-  // ========================================================================
+// 2. LẤY DANH SÁCH SẢN PHẨM (SỬA ĐỂ HANDLE PAGINATION: data.items)
+// ========================================================================
   Future<void> fetchProducts({bool showLoading = true}) async {
     if (showLoading) {
       _isLoading = true;
@@ -77,8 +77,42 @@ class ProductProvider with ChangeNotifier {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      final List<dynamic> rawList = response.data['data'] ?? [];
-      _products = rawList.map((json) => ProductModel.fromJson(json)).toList();
+      print('DEBUG: Response data: ${response.data}'); // Log để debug
+
+      dynamic data = response.data['data'];
+
+      // FIX: Handle pagination structure: data = {items: [...], page: ..., total: ...}
+      List<dynamic> rawList;
+      if (data is Map) {
+        rawList = data['items'] ?? []; // ← SỬA: Lấy 'items' array từ pagination object
+        print('DEBUG: Extracted items from pagination: ${rawList.length}');
+      } else if (data is List) {
+        rawList = data;
+        print('DEBUG: Direct list from data');
+      } else {
+        rawList = []; // Fallback empty
+        print('DEBUG: Data not Map or List, using empty list');
+      }
+
+      print('DEBUG: Raw list length: ${rawList.length}');
+
+      // FIX: Try-catch cho từng item parse để tránh crash toàn bộ
+      final List<ProductModel> parsedProducts = [];
+      for (final item in rawList) {
+        try {
+          if (item is Map<String, dynamic>) {
+            parsedProducts.add(ProductModel.fromJson(item));
+          } else {
+            print('DEBUG: Skip invalid item: $item');
+          }
+        } catch (parseError) {
+          print('DEBUG: Parse error for item $item: $parseError');
+          // Không throw, chỉ skip item lỗi
+        }
+      }
+
+      _products = parsedProducts;
+      print('DEBUG: Parsed products count: ${_products.length}');
 
       _isLoading = false;
       notifyListeners();
@@ -87,7 +121,8 @@ class ProductProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'Lỗi không xác định: $e';
+      print('DEBUG: Unexpected error in fetchProducts: $e');
+      _error = 'Lỗi không mong muốn: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
     }
