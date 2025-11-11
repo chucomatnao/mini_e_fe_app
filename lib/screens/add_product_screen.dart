@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
-import 'add_variant_screen.dart';
+import 'add_variant_screen.dart'; // Import AddVariantScreen
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -119,41 +119,57 @@ class _AddProductScreenState extends State<AddProductScreen> {
             const SizedBox(height: 24),
 
             // NÚT TẠO
-            ElevatedButton(
-              onPressed: provider.isLoading ? null : () async {
-                if (_formKey.currentState!.validate()) {
-                  final price = double.tryParse(_priceController.text) ?? 0;
-                  final stock = int.tryParse(_stockController.text) ?? null;
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                onPressed: provider.isLoading ? null : () async {
+                  if (_formKey.currentState!.validate()) {
+                    final price = double.tryParse(_priceController.text) ?? 0;
+                    final stock = int.tryParse(_stockController.text) ?? null;
 
-                  final product = await provider.createProduct(
-                    title: _titleController.text,
-                    price: price,
-                    stock: stock,
-                    description: _descriptionController.text,
-                    slug: _slugController.text,
-                    images: _images,
-                  );
+                    try {
+                      final product = await provider.createProduct(
+                        title: _titleController.text,
+                        price: price,
+                        stock: stock,
+                        description: _descriptionController.text,
+                        slug: _slugController.text,
+                        images: _images,
+                      );
 
-                  if (product != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tạo sản phẩm thành công!')),
-                    );
+                      if (product != null && product.id > 0) { // KIỂM TRA product.id tồn tại
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Tạo sản phẩm thành công!')),
+                        );
 
-                    // LUỒNG: TỰ ĐỘNG CHUYỂN ĐẾN THÊM BIẾN THỂ
-                    if (mounted) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (ctx) => AddVariantScreen(productId: product.id),
-                        ),
+                        // LUỒNG: TỰ ĐỘNG CHUYỂN ĐẾN THÊM BIẾN THỂ
+                        if (mounted) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (ctx) => AddVariantScreen(productId: product.id),
+                            ),
+                          );
+                        }
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Tạo sản phẩm thất bại. Thử lại.')),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Lỗi: ${e.toString()}')),
                       );
                     }
                   }
-                }
-              },
-              child: provider.isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Tạo sản phẩm'),
+                },
+                child: provider.isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Tạo sản phẩm', style: TextStyle(fontSize: 16)),
+              ),
             ),
           ],
         ),
