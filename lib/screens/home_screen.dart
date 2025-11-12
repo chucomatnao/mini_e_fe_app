@@ -219,7 +219,7 @@ class HomeScreen extends StatelessWidget {
                               crossAxisCount: 2,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
-                              childAspectRatio: 0.75,
+                              childAspectRatio: 0.68, // TĂNG ĐỂ TRÁNH TRÀN
                             ),
                             itemCount: productProvider.products.length,
                             itemBuilder: (context, index) {
@@ -232,149 +232,143 @@ class HomeScreen extends StatelessWidget {
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(12),
                                     boxShadow: const [
-                                      BoxShadow(color: Color(0x1F000000), blurRadius: 5, offset: Offset(0, 3)),
+                                      BoxShadow(color: Color(0x1F000000), blurRadius: 6, offset: Offset(0, 3)),
                                     ],
                                   ),
+                                  padding: const EdgeInsets.all(10),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // Ảnh sản phẩm
-                                      ClipRRect(
-                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                        child: product.imageUrl.isNotEmpty
-                                            ? Image.network(
-                                          product.imageUrl,
-                                          height: 120,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Container(
-                                            height: 120,
+                                      // 1. ẢNH NHỎ HƠN → 140x140
+                                      Center(
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: product.imageUrl.isNotEmpty
+                                              ? Image.network(
+                                            product.imageUrl,
+                                            height: 140,
+                                            width: 140,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Container(
+                                              height: 140,
+                                              width: 140,
+                                              color: Colors.grey[300],
+                                              child: const Icon(Icons.broken_image, size: 40),
+                                            ),
+                                          )
+                                              : Container(
+                                            height: 140,
+                                            width: 140,
                                             color: Colors.grey[300],
-                                            child: const Icon(Icons.broken_image, size: 40),
+                                            child: const Icon(Icons.image, size: 40),
                                           ),
-                                        )
-                                            : Container(
-                                          height: 120,
-                                          color: Colors.grey[300],
-                                          child: const Icon(Icons.image, size: 40),
                                         ),
                                       ),
+                                      const SizedBox(height: 8),
 
-                                      // Thông tin + nút
-                                      Expanded(
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              // Tên
-                                              Text(
-                                                product.title,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                                              ),
-                                              const SizedBox(height: 4),
+                                      // 2. TÊN – 1 DÒNG
+                                      Text(
+                                        product.title,
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
 
-                                              // Giá
-                                              Text(
-                                                '${product.price.toStringAsFixed(0)}₫',
-                                                style: const TextStyle(fontSize: 13, color: Colors.redAccent, fontWeight: FontWeight.bold),
-                                              ),
+                                      // 3. GIÁ + TRẠNG THÁI (CÙNG HÀNG)
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            '${product.price.toStringAsFixed(0)}₫',
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: product.status == 'ACTIVE' ? Colors.teal.shade100 : Colors.grey.shade300,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              product.status == 'ACTIVE' ? 'Hoạt động' : 'Ẩn',
+                                              style: const TextStyle(fontSize: 9),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
 
-                                              // Kho
-                                              if (product.stock != null)
-                                                Text(
-                                                  'Còn: ${product.stock}',
-                                                  style: TextStyle(fontSize: 11, color: product.stock! > 0 ? Colors.green : Colors.red),
-                                                ),
+                                      // 4. KHO – NHỎ GỌN
+                                      if (product.stock != null)
+                                        Text(
+                                          'Kho: ${product.stock}',
+                                          style: TextStyle(fontSize: 11, color: product.stock! > 0 ? Colors.black54 : Colors.red),
+                                        ),
 
-                                              // Variant (chip nhỏ)
-                                              if (product.variants != null && product.variants!.isNotEmpty)
-                                                Padding(
-                                                  padding: const EdgeInsets.only(top: 4),
-                                                  child: Wrap(
-                                                    spacing: 4,
-                                                    runSpacing: 2,
-                                                    children: product.variants!.take(2).map((v) {
-                                                      final opts = v.options.take(2).join(', ');
-                                                      return Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.grey.shade200,
-                                                          borderRadius: BorderRadius.circular(8),
-                                                        ),
-                                                        child: Text(
-                                                          '${v.name}: $opts',
-                                                          style: const TextStyle(fontSize: 9),
-                                                        ),
-                                                      );
-                                                    }).toList(),
-                                                  ),
-                                                ),
-
-                                              const Spacer(),
-
-                                              // THÊM: 2 NÚT NHỎ
-                                              Row(
-                                                children: [
-                                                  // Nút "Thêm vào giỏ"
-                                                  Expanded(
-                                                    child: SizedBox(
-                                                      height: 28,
-                                                      child: OutlinedButton.icon(
-                                                        onPressed: () {
-                                                          ScaffoldMessenger.of(context).showSnackBar(
-                                                            SnackBar(
-                                                              content: Text('Đã thêm "${product.title}" vào giỏ hàng'),
-                                                              backgroundColor: Colors.green,
-                                                              duration: const Duration(seconds: 1),
-                                                            ),
-                                                          );
-                                                        },
-                                                        icon: const Icon(Icons.add_shopping_cart, size: 14),
-                                                        label: const Text('Giỏ', style: TextStyle(fontSize: 10)),
-                                                        style: OutlinedButton.styleFrom(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                                                          side: const BorderSide(color: Colors.blue),
-                                                          foregroundColor: Colors.blue,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 6),
-
-                                                  // Nút "Mua ngay"
-                                                  Expanded(
-                                                    child: SizedBox(
-                                                      height: 28,
-                                                      child: ElevatedButton.icon(
-                                                        onPressed: () {
-                                                          ScaffoldMessenger.of(context).showSnackBar(
-                                                            SnackBar(
-                                                              content: Text('Đã mua "${product.title}"'),
-                                                              backgroundColor: Colors.orange,
-                                                              duration: const Duration(seconds: 1),
-                                                            ),
-                                                          );
-                                                        },
-                                                        icon: const Icon(Icons.flash_on, size: 14),
-                                                        label: const Text('Mua', style: TextStyle(fontSize: 10)),
-                                                        style: ElevatedButton.styleFrom(
-                                                          backgroundColor: Colors.orange,
-                                                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                                                          elevation: 0,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
+                                      // 5. BIẾN THỂ – CHỈ 1 DÒNG, 2 CHIP
+                                      if (product.variants != null && product.variants!.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
+                                          child: Wrap(
+                                            spacing: 4,
+                                            children: product.variants!.take(2).map((v) {
+                                              final opt = v.options.isNotEmpty ? v.options.first : '';
+                                              return Chip(
+                                                label: Text(opt, style: const TextStyle(fontSize: 9)),
+                                                backgroundColor: Colors.grey.shade200,
+                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              );
+                                            }).toList(),
                                           ),
                                         ),
+
+                                      const Spacer(),
+
+                                      // 6. 2 NÚT NHỎ – KHÔNG TRÀN
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: SizedBox(
+                                              height: 32,
+                                              child: OutlinedButton.icon(
+                                                onPressed: () {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text('Đã thêm vào giỏ'), backgroundColor: Colors.green),
+                                                  );
+                                                },
+                                                icon: const Icon(Icons.add_shopping_cart, size: 14),
+                                                label: const Text('Giỏ', style: TextStyle(fontSize: 11)),
+                                                style: OutlinedButton.styleFrom(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                                  side: const BorderSide(color: Colors.blue),
+                                                  foregroundColor: Colors.blue,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: SizedBox(
+                                              height: 32,
+                                              child: ElevatedButton.icon(
+                                                onPressed: () {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text('Đã mua'), backgroundColor: Colors.orange),
+                                                  );
+                                                },
+                                                icon: const Icon(Icons.flash_on, size: 14),
+                                                label: const Text('Mua', style: TextStyle(fontSize: 11)),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.orange,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
