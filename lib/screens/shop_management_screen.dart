@@ -1,13 +1,14 @@
+// lib/screens/shop_management_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/shop_provider.dart';
 import '../providers/auth_provider.dart';
-import '../providers/product_provider.dart'; // Để lấy products của shop
+import '../providers/product_provider.dart';
 import 'shop_register_screen.dart';
 import 'add_product_screen.dart';
-import 'product_detail_screen.dart'; // Để navigate đến detail (edit mode nếu cần)
+import 'product_detail_screen.dart';
 
 class ShopManagementScreen extends StatefulWidget {
   const ShopManagementScreen({Key? key}) : super(key: key);
@@ -24,12 +25,10 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
   @override
   void initState() {
     super.initState();
-    // Gọi load shop ngay khi màn hình được tạo
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
       if (auth.accessToken != null) {
         context.read<ShopProvider>().loadMyShop();
-        // THÊM: Fetch products sau khi load shop (để filter sau)
         context.read<ProductProvider>().fetchProducts();
       }
     });
@@ -56,9 +55,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────
-  // XỬ LÝ LỖI
-  // ──────────────────────────────────────────────────────────────
   Widget _buildError(BuildContext context, String error) {
     return Center(
       child: Column(
@@ -74,9 +70,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────
-  // CHƯA CÓ SHOP → HIỆN MÀN HÌNH ĐĂNG KÝ
-  // ──────────────────────────────────────────────────────────────
   Widget _buildNoShop(BuildContext context) {
     return Center(
       child: Column(
@@ -102,13 +95,10 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────
-  // ĐÃ CÓ SHOP → HIỆN THÔNG TIN + 3 NÚT CÙNG HÀNG + DANH SÁCH SẢN PHẨM
-  // ──────────────────────────────────────────────────────────────
   Widget _buildShopInfo(BuildContext context, ShopProvider shopProvider) {
     final shop = shopProvider.shop!;
 
-    return SingleChildScrollView( // Để scroll khi có nhiều products
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,7 +111,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // Avatar (hiện ảnh nếu có, nếu không hiện icon shop)
                   CircleAvatar(
                     radius: 40,
                     backgroundColor: Colors.grey[300],
@@ -133,7 +122,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
                         : null,
                   ),
                   const SizedBox(width: 16),
-                  // Tên shop + trạng thái
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +153,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
 
           const SizedBox(height: 24),
 
-          // SỬA: 3 NÚT LỚN CÙNG HÀNG (THÊM SẢN PHẨM + CHỈNH SỬA + XÓA)
+          // 3 NÚT LỚN
           Row(
             children: [
               Expanded(
@@ -191,7 +179,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
                 child: ElevatedButton.icon(
                   onPressed: () => _showEditDialog(context, shopProvider),
                   icon: const Icon(Icons.edit),
-                  label: const Text('Chỉnh sửa thông tin'),
+                  label: const Text('Chỉnh sửa'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green[600],
                     foregroundColor: Colors.white,
@@ -219,10 +207,9 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
 
           const SizedBox(height: 24),
 
-          // DANH SÁCH SẢN PHẨM CỦA SHOP (FILTER TỪ PRODUCT PROVIDER)
+          // DANH SÁCH SẢN PHẨM
           Consumer<ProductProvider>(
             builder: (context, productProvider, child) {
-              // Filter products của shop này (client-side, không sửa backend)
               final shopProducts = productProvider.products
                   .where((product) => product.shopId == shop.id)
                   .toList();
@@ -239,7 +226,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
                       children: [
                         const Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey),
                         const SizedBox(height: 8),
-                        const Text('Chưa có sản phẩm nào trong shop này.'),
+                        const Text('Chưa có sản phẩm nào.'),
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
                           onPressed: () {
@@ -249,7 +236,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
                             );
                           },
                           icon: const Icon(Icons.add),
-                          label: const Text('Thêm sản phẩm đầu tiên'),
+                          label: const Text('Thêm sản phẩm'),
                         ),
                       ],
                     ),
@@ -266,15 +253,12 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Sản phẩm của shop',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
+                          const Text('Sản phẩm của shop', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           Text('Tổng: ${shopProducts.length}'),
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Trong phần GridView.builder của ShopManagementScreen
+
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -282,17 +266,22 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
                           crossAxisCount: 2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
-                          childAspectRatio: 0.75,
+                          childAspectRatio: 0.68,
                         ),
                         itemCount: shopProducts.length,
                         itemBuilder: (context, index) {
                           final product = shopProducts[index];
+
                           return GestureDetector(
                             onTap: () {
+                              // ĐÃ SỬA: TRUYỀN isFromShopManagement: true
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => ProductDetailScreen(product: product, isEditMode: true),
+                                  builder: (_) => ProductDetailScreen(
+                                    product: product,
+                                    isFromShopManagement: true,
+                                  ),
                                 ),
                               );
                             },
@@ -301,86 +290,140 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: const [
-                                  BoxShadow(color: Color(0x1F000000), blurRadius: 4, offset: Offset(0, 2)),
+                                  BoxShadow(color: Color(0x1F000000), blurRadius: 6, offset: Offset(0, 3)),
                                 ],
                               ),
+                              padding: const EdgeInsets.all(10),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Ảnh
-                                  Expanded(
-                                    flex: 3,
+                                  // ẢNH
+                                  Center(
                                     child: ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                      borderRadius: BorderRadius.circular(12),
                                       child: product.imageUrl.isNotEmpty
                                           ? Image.network(
                                         product.imageUrl,
-                                        width: double.infinity,
+                                        height: 140,
+                                        width: 140,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) => Container(
+                                          height: 140,
+                                          width: 140,
                                           color: Colors.grey[300],
-                                          child: const Icon(Icons.broken_image, size: 32),
+                                          child: const Icon(Icons.broken_image, size: 40),
                                         ),
                                       )
-                                          : Container(color: Colors.grey[300], child: const Icon(Icons.image, size: 32)),
-                                    ),
-                                  ),
-
-                                  // Thông tin
-                                  Expanded(
-                                    flex: 3,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          // Tên sản phẩm
-                                          Text(
-                                            product.title,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                                          ),
-                                          const SizedBox(height: 4),
-
-                                          // Giá
-                                          Text(
-                                            '${product.price.toStringAsFixed(0)}₫',
-                                            style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold),
-                                          ),
-
-                                          // Kho
-                                          if (product.stock != null)
-                                            Text(
-                                              'Kho: ${product.stock}',
-                                              style: TextStyle(fontSize: 11, color: product.stock! > 0 ? Colors.green : Colors.red),
-                                            ),
-
-                                          const SizedBox(height: 6),
-
-                                          // BIẾN THỂ (nếu có)
-                                          if (product.variants != null && product.variants!.isNotEmpty)
-                                            Wrap(
-                                              spacing: 4,
-                                              runSpacing: 2,
-                                              children: product.variants!.take(2).map((variant) {
-                                                final optionText = variant.options.take(2).join(', ');
-                                                return Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey.shade200,
-                                                    borderRadius: BorderRadius.circular(8),
-                                                  ),
-                                                  child: Text(
-                                                    '${variant.name}: $optionText',
-                                                    style: const TextStyle(fontSize: 9, color: Colors.black87),
-                                                  ),
-                                                );
-                                              }).toList(),
-                                            ),
-                                        ],
+                                          : Container(
+                                        height: 140,
+                                        width: 140,
+                                        color: Colors.grey[300],
+                                        child: const Icon(Icons.image, size: 40),
                                       ),
                                     ),
+                                  ),
+                                  const SizedBox(height: 8),
+
+                                  // TÊN
+                                  Text(
+                                    product.title,
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+
+                                  // GIÁ + TRẠNG THÁI
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${product.price.toStringAsFixed(0)}₫',
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: product.status == 'ACTIVE' ? Colors.teal.shade100 : Colors.grey.shade300,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          product.status == 'ACTIVE' ? 'Hoạt động' : 'Ẩn',
+                                          style: const TextStyle(fontSize: 9),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+
+                                  // KHO
+                                  if (product.stock != null)
+                                    Text(
+                                      'Kho: ${product.stock}',
+                                      style: TextStyle(fontSize: 11, color: product.stock! > 0 ? Colors.black54 : Colors.red),
+                                    ),
+
+                                  // BIẾN THỂ
+                                  if (product.variants != null && product.variants!.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Wrap(
+                                        spacing: 4,
+                                        children: product.variants!.take(2).map((v) {
+                                          final opt = v.options.isNotEmpty ? v.options.first : '';
+                                          return Chip(
+                                            label: Text(opt, style: const TextStyle(fontSize: 9)),
+                                            backgroundColor: Colors.grey.shade200,
+                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+
+                                  const Spacer(),
+
+                                  // 2 NÚT: SỬA + XÓA
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: SizedBox(
+                                          height: 32,
+                                          child: OutlinedButton.icon(
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => AddProductScreen(editProduct: product),
+                                                ),
+                                              );
+                                            },
+                                            icon: const Icon(Icons.edit, size: 14),
+                                            label: const Text('Sửa', style: TextStyle(fontSize: 11)),
+                                            style: OutlinedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                                              side: const BorderSide(color: Colors.blue),
+                                              foregroundColor: Colors.blue,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: SizedBox(
+                                          height: 32,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => _confirmDeleteProduct(context, product.id, productProvider),
+                                            icon: const Icon(Icons.delete, size: 14),
+                                            label: const Text('Xóa', style: TextStyle(fontSize: 11)),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -399,29 +442,50 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────
-  // DIALOG CHỈNH SỬA SHOP (GIỮ NGUYÊN)
-  // ──────────────────────────────────────────────────────────────
+  void _confirmDeleteProduct(BuildContext context, int productId, ProductProvider provider) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xóa sản phẩm'),
+        content: const Text('Bạn có chắc chắn muốn xóa sản phẩm này?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final success = await provider.deleteProduct(productId);
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa sản phẩm'), backgroundColor: Colors.green),
+        );
+      }
+    }
+  }
+
   void _showEditDialog(BuildContext context, ShopProvider shopProvider) async {
     final shop = shopProvider.shop!;
     final nameCtrl = TextEditingController(text: shop.name);
     final emailCtrl = TextEditingController(text: shop.email ?? '');
     final descCtrl = TextEditingController(text: shop.description ?? '');
 
-    // Biến lưu ảnh được chọn (đặt trong StatefulBuilder để cập nhật UI)
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setStateDialog) {
-          File? _selectedImage; // Biến lưu ảnh tạm trong dialog
+          File? _selectedImage;
 
-          // Hàm chọn ảnh từ thư viện
           Future<void> pickImage() async {
             final picker = ImagePicker();
             final pickedFile = await picker.pickImage(source: ImageSource.gallery);
             if (pickedFile != null) {
               setStateDialog(() {
-                _selectedImage = File(pickedFile.path); // Cập nhật ảnh
+                _selectedImage = File(pickedFile.path);
               });
             }
           }
@@ -432,16 +496,15 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // AVATAR CÓ THỂ BẤM ĐỂ CHỌN ẢNH
                   GestureDetector(
-                    onTap: pickImage, // Bấm vào ảnh → mở thư viện
+                    onTap: pickImage,
                     child: CircleAvatar(
                       radius: 50,
                       backgroundColor: Colors.grey[300],
                       backgroundImage: _selectedImage != null
-                          ? FileImage(_selectedImage!) // Ưu tiên ảnh mới chọn
+                          ? FileImage(_selectedImage!)
                           : shop.logoUrl != null
-                          ? NetworkImage(shop.logoUrl!) // Ảnh cũ từ server
+                          ? NetworkImage(shop.logoUrl!)
                           : null,
                       child: _selectedImage == null && shop.logoUrl == null
                           ? const Icon(Icons.add_a_photo, size: 40, color: Colors.white70)
@@ -449,28 +512,13 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Bấm vào ảnh để chọn',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
+                  const Text('Bấm vào ảnh để chọn', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 16),
-
-                  // CÁC FIELD CHỈNH SỬA (GIỮ NGUYÊN NHƯ CŨ)
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: 'Tên Shop', border: OutlineInputBorder()),
-                  ),
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Tên Shop', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: emailCtrl,
-                    decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
-                  ),
+                  TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: descCtrl,
-                    decoration: const InputDecoration(labelText: 'Mô tả', border: OutlineInputBorder()),
-                    maxLines: 3,
-                  ),
+                  TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Mô tả', border: OutlineInputBorder()), maxLines: 3),
                 ],
               ),
             ),
@@ -480,20 +528,17 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
                 onPressed: shopProvider.isLoading
                     ? null
                     : () async {
-                  // So sánh để chỉ gửi dữ liệu thay đổi
                   final data = <String, dynamic>{};
                   if (nameCtrl.text.trim() != shop.name) data['name'] = nameCtrl.text.trim();
                   if (emailCtrl.text.trim() != (shop.email ?? '')) data['email'] = emailCtrl.text.trim();
                   if (descCtrl.text.trim() != (shop.description ?? '')) data['description'] = descCtrl.text.trim();
 
-                  // XỬ LÝ ẢNH (chưa upload thật – chỉ hiện thông báo)
                   if (_selectedImage != null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Tính năng upload ảnh đang phát triển...')),
                     );
                   }
 
-                  // Gửi dữ liệu nếu có thay đổi
                   if (data.isNotEmpty) {
                     await shopProvider.update(shop.id, data);
                   }
@@ -511,9 +556,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────
-  // XÁC NHẬN XÓA SHOP (GIỮ NGUYÊN)
-  // ──────────────────────────────────────────────────────────────
   void _confirmDelete(BuildContext context, ShopProvider shopProvider) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -534,9 +576,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
     }
   }
 
-  // ──────────────────────────────────────────────────────────────
-  // HIỆN THÔNG BÁO KẾT QUẢ (GIỮ NGUYÊN)
-  // ──────────────────────────────────────────────────────────────
   void _showResult(BuildContext context, ShopProvider shopProvider) {
     final message = shopProvider.error ?? 'Thành công!';
     final isError = shopProvider.error != null;
@@ -546,7 +585,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
     );
 
     if (!isError && shopProvider.shop == null) {
-      Navigator.pop(context); // Quay lại nếu xóa shop
+      Navigator.pop(context);
     }
   }
 }
