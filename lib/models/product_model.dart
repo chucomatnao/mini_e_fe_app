@@ -1,5 +1,5 @@
 // lib/models/product_model.dart
-import 'variant_model.dart'; // THÊM
+import 'variant_model.dart';
 
 class ProductModel {
   final int id;
@@ -10,7 +10,10 @@ class ProductModel {
   final int? stock;
   final String? status;
   final int shopId;
-  final List<VariantModel>? variants; // THÊM
+  final List<VariantModel>? variants;
+
+  // THÊM: SLUG
+  final String? slug;
 
   ProductModel({
     required this.id,
@@ -21,7 +24,8 @@ class ProductModel {
     this.stock,
     this.status,
     required this.shopId,
-    this.variants, // THÊM
+    this.variants,
+    this.slug, // THÊM
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -41,11 +45,12 @@ class ProductModel {
       stock: int.tryParse(json['stock']?.toString() ?? '0'),
       status: json['status']?.toString(),
       shopId: json['shopId'] ?? 0,
-      variants: variants, // THÊM
+      variants: variants,
+      slug: json['slug']?.toString(), // THÊM: LẤY SLUG TỪ JSON
     );
   }
 
-  // Helper: parse imageUrl (giữ nguyên logic cũ)
+  // Helper: parse imageUrl
   static String _parseImageUrl(dynamic images) {
     if (images == null) return '';
     if (images is List && images.isNotEmpty) {
@@ -57,5 +62,21 @@ class ProductModel {
       }
     }
     return '';
+  }
+
+  // THÊM: toJson (nếu cần gửi lại)
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'price': price,
+      'imageUrl': imageUrl,
+      'stock': stock,
+      'status': status,
+      'shopId': shopId,
+      'variants': variants?.map((v) => v.toJson()).toList(),
+      'slug': slug,
+    };
   }
 }
