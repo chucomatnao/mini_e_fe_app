@@ -18,6 +18,8 @@ import 'models/shop_model.dart';
 import 'models/product_model.dart'; // ← THÊM: CHO PRODUCT DETAIL
 
 // Screens
+import 'screens/admins/admin_shops_screen.dart';
+import 'screens/admins/admin_users_screen.dart';
 import 'screens/admins/admin_shop_approval_screen.dart';
 import 'screens/admins/admin_home_screen.dart';
 import 'screens/auths/login_screen.dart';
@@ -32,8 +34,6 @@ import 'screens/shops/shop_register_screen.dart';
 import 'screens/users/personal_info_screen.dart';
 import 'screens/shops/shop_list_screen.dart';
 import 'screens/shops/shop_detail_screen.dart';
-
-// === MỚI THÊM: SCREEN PRODUCT ===
 import 'screens/products/product_detail_screen.dart';
 import 'screens/products/add_product_screen.dart';
 import 'screens/products//add_variant_screen.dart'; // (Tùy chọn)
@@ -87,7 +87,6 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/register': (context) =>  RegisterScreen(),
         '/home': (context) {
-          // TỰ ĐỘNG FETCH KHI VÀO HOME
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Provider.of<ProductProvider>(context, listen: false).fetchProducts();
           });
@@ -103,7 +102,10 @@ class MyApp extends StatelessWidget {
         '/shop-register': (context) => const ShopRegisterScreen(),
         '/personal-info': (context) => const PersonalInfoScreen(),
         '/shops': (context) => const ShopListScreen(),
+        // === ADMIN ===
         '/admin-home': (context) =>  AdminHomeScreen(),
+        '/admin/shops': (context) => AdminShopsScreen(),
+        '/admin/users': (context) => AdminUsersScreen(),
         '/admin-shop-approval': (context) =>  AdminShopApprovalScreen(),
 
         // === SHOP DETAIL (có argument) ===
