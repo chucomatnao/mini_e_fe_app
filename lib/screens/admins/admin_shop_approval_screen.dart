@@ -1,7 +1,7 @@
 // lib/screens/admin_shop_approval_screen.dart
 import 'package:flutter/material.dart';
-import '../service/shop_service.dart';
-import '../models/shop_model.dart';
+import '../../service/shop_service.dart';
+import '../../models/shop_model.dart';
 
 class AdminShopApprovalScreen extends StatefulWidget {
   @override
