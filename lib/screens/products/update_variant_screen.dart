@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/product_provider.dart';
+import '/../../providers/product_provider.dart';
 
 class UpdateVariantScreen extends StatefulWidget {
   final int productId;

@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../providers/product_provider.dart';
-import '../models/product_model.dart';
+import '/../../providers/product_provider.dart';
+import '../../models/product_model.dart';
 import 'add_variant_screen.dart';
 import 'update_variant_screen.dart';
 

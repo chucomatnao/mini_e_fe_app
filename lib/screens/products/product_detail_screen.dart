@@ -1,11 +1,11 @@
 // lib/screens/product_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/product_model.dart';
-import '../providers/product_provider.dart';
-import '../providers/auth_provider.dart';
-import '../providers/shop_provider.dart';
-import 'products/add_product_screen.dart';
+import '../../models/product_model.dart';
+import '/../../providers/product_provider.dart';
+import '/../../providers/auth_provider.dart';
+import '/../../providers/shop_provider.dart';
+import 'add_product_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
