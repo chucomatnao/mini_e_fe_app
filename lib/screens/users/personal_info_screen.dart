@@ -1,8 +1,8 @@
 // lib/screens/personal_info_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import '../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/user_provider.dart';
 import 'edit_personal_info_screen.dart';
 
 class PersonalInfoScreen extends StatefulWidget {

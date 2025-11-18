@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';   // Thêm package này
-import '../providers/user_provider.dart';
-import '../models/user_model.dart';
+import '../../providers/user_provider.dart';
+import '../../models/user_model.dart';
 
 class EditPersonalInfoScreen extends StatefulWidget {
   const EditPersonalInfoScreen({Key? key}) : super(key: key);
