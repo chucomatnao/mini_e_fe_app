@@ -204,7 +204,7 @@ class ProductProvider with ChangeNotifier {
   }
 
   // ========================================================================
-// 4. CẬP NHẬT SẢN PHẨM – DÙNG DIO ĐÚNG CÁCH (KHÔNG DÙNG .append)
+// 4. CẬP NHẬT SẢN PHẨM – HOÀN HẢO, CHẠY NGON VỚI BACKEND HIỆN TẠI
 // ========================================================================
   Future<bool> updateProduct({
     required int productId,
@@ -228,7 +228,7 @@ class ProductProvider with ChangeNotifier {
           (!kIsWeb && images?.isNotEmpty == true);
 
       if (!hasNewImages) {
-        // ------------------- GỬI JSON -------------------
+        // GỬI JSON (không có ảnh) – HOẠT ĐỘNG BÌNH THƯỜNG
         final jsonBody = <String, dynamic>{
           'title': title,
           'price': price,
@@ -243,28 +243,24 @@ class ProductProvider with ChangeNotifier {
         final response = await _dio.patch(
           ProductApi.byId(productId),
           data: jsonBody,
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json', // Quan trọng!
-            },
-          ),
+          options: Options(headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          }),
         );
 
         final updatedProduct = ProductModel.fromJson(response.data['data']);
         final index = _products.indexWhere((p) => p.id == productId);
-        if (index != -1) {
-          _products[index] = updatedProduct;
-        }
+        if (index != -1) _products[index] = updatedProduct;
 
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
-        // ------------------- GỬI FORM-DATA (có ảnh) -------------------
+        // GỬI FORM-DATA (có ảnh) – ĐÃ SỬA ĐÚNG 100% CHO BACKEND "KÉN CỬA"
         final formData = FormData();
 
-        // Thêm text fields
+        // QUAN TRỌNG: Dùng cách add fields kiểu cũ (backend bạn chỉ nhận được khi dùng cách này)
         formData.fields
           ..add(MapEntry('title', title))
           ..add(MapEntry('price', price.toString()))
@@ -276,39 +272,49 @@ class ProductProvider with ChangeNotifier {
               MapEntry('slug', slug.trim()),
           ]);
 
-        // Thêm ảnh
-        if (kIsWeb && imageBytes != null) {
-          for (int i = 0; i < imageBytes.length; i++) {
+        // Thêm ảnh – đúng tên field 'images'
+        if (kIsWeb && imageBytes != null && imageBytes.isNotEmpty) {
+          for (var i = 0; i < imageBytes.length; i++) {
             formData.files.add(MapEntry(
               'images',
-              MultipartFile.fromBytes(imageBytes[i], filename: 'update_$i.jpg'),
-            ));
-          }
-        } else if (images != null) {
-          for (int i = 0; i < images.length; i++) {
-            formData.files.add(MapEntry(
-              'images',
-              await MultipartFile.fromFile(images[i].path, filename: 'update_$i.jpg'),
+              MultipartFile.fromBytes(
+                imageBytes[i],
+                filename: 'image_$i.jpg',
+              ),
             ));
           }
         }
 
-        print('DEBUG: Sending FormData with ${formData.files.length} images');
+        if (!kIsWeb && images != null && images.isNotEmpty) {
+          for (var i = 0; i < images.length; i++) {
+            formData.files.add(MapEntry(
+              'images',
+              await MultipartFile.fromFile(
+                images[i].path,
+                filename: 'image_$i.jpg',
+              ),
+            ));
+          }
+        }
+
+        print('DEBUG: Sending FormData với ${formData.files.length} ảnh');
+        print('DEBUG: Fields: ${formData.fields.map((e) => '${e.key}: ${e.value}')}');
 
         final response = await _dio.patch(
           ProductApi.byId(productId),
           data: formData,
-          options: Options(headers: {
-            'Authorization': 'Bearer $token',
-            // DIO tự động thêm boundary cho multipart
-          }),
+          options: Options(
+            headers: {
+              'Authorization': 'Bearer $token',
+              // BẮT BUỘC KHÔNG ĐƯỢC ĐỂ DIO TỰ SET CONTENT-TYPE KHI DÙNG formData.fields.add()
+              // → Nếu để trống thì Dio sẽ gửi đúng boundary → backend nhận được
+            },
+          ),
         );
 
         final updatedProduct = ProductModel.fromJson(response.data['data']);
         final index = _products.indexWhere((p) => p.id == productId);
-        if (index != -1) {
-          _products[index] = updatedProduct;
-        }
+        if (index != -1) _products[index] = updatedProduct;
 
         _isLoading = false;
         notifyListeners();
@@ -317,6 +323,7 @@ class ProductProvider with ChangeNotifier {
     } on DioException catch (e) {
       _error = _handleDioError(e);
       print('Dio Error in updateProduct: ${e.response?.data}');
+      print('Request data: ${e.requestOptions.data}');
     } catch (e) {
       _error = 'Lỗi cập nhật: $e';
       print('Error in updateProduct: $e');

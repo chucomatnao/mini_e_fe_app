@@ -18,25 +18,25 @@ import 'models/shop_model.dart';
 import 'models/product_model.dart'; // ← THÊM: CHO PRODUCT DETAIL
 
 // Screens
-import 'screens/admin_shop_approval_screen.dart';
-import 'screens/admin_home_screen.dart';
-import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
+import 'screens/admins/admin_shop_approval_screen.dart';
+import 'screens/admins/admin_home_screen.dart';
+import 'screens/auths/login_screen.dart';
+import 'screens/auths/register_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/forgot_password_screen.dart';
-import 'screens/verify_account_screen.dart';
-import 'screens/reset_otp_screen.dart';
+import 'screens/auths/forgot_password_screen.dart';
+import 'screens/auths/verify_account_screen.dart';
+import 'screens/auths/reset_otp_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/shop_management_screen.dart';
-import 'screens/shop_register_screen.dart';
-import 'screens/personal_info_screen.dart';
-import 'screens/shop_list_screen.dart';
-import 'screens/shop_detail_screen.dart';
+import 'screens/shops/shop_management_screen.dart';
+import 'screens/shops/shop_register_screen.dart';
+import 'screens/users/personal_info_screen.dart';
+import 'screens/shops/shop_list_screen.dart';
+import 'screens/shops/shop_detail_screen.dart';
 
 // === MỚI THÊM: SCREEN PRODUCT ===
-import 'screens/product_detail_screen.dart';
-import 'screens/add_product_screen.dart';
-import 'screens/add_variant_screen.dart'; // (Tùy chọn)
+import 'screens/products/product_detail_screen.dart';
+import 'screens/products/add_product_screen.dart';
+import 'screens/products//add_variant_screen.dart'; // (Tùy chọn)
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
