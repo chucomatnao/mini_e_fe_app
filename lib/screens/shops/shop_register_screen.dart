@@ -2,9 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/shop_provider.dart';
-import '../widgets/custom_button.dart';
-import '../widgets/loading_indicator.dart';
+import '../../providers/shop_provider.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/loading_indicator.dart';
 
 class ShopRegisterScreen extends StatefulWidget {
   const ShopRegisterScreen({super.key});

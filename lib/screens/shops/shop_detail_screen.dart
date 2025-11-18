@@ -1,6 +1,6 @@
 // lib/screens/shop_detail_screen.dart
 import 'package:flutter/material.dart';
-import '../models/shop_model.dart';
+import '../../models/shop_model.dart';
 
 class ShopDetailScreen extends StatelessWidget {
   final ShopModel shop;

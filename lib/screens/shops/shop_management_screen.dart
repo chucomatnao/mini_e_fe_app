@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../providers/shop_provider.dart';
-import '../providers/auth_provider.dart';
-import '../providers/product_provider.dart';
+import '/../providers/shop_provider.dart';
+import '/../providers/auth_provider.dart';
+import '/../providers/product_provider.dart';
 import 'shop_register_screen.dart';
-import 'products/add_product_screen.dart';
-import 'product_detail_screen.dart';
+import '../products/add_product_screen.dart';
+import '../products/product_detail_screen.dart';
 
 class ShopManagementScreen extends StatefulWidget {
   const ShopManagementScreen({Key? key}) : super(key: key);

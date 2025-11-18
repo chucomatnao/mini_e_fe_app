@@ -1,8 +1,8 @@
 // lib/screens/shop_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/shop_provider.dart';
-import 'shop_detail_screen.dart';
+import '/../providers/shop_provider.dart';
+import '../shops/shop_detail_screen.dart';
 
 class ShopListScreen extends StatefulWidget {
   const ShopListScreen({Key? key}) : super(key: key);
