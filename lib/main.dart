@@ -8,6 +8,7 @@ import 'providers/auth_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/shop_provider.dart';
+import 'providers/cart_provider.dart';
 
 // Services
 import 'service/api_client.dart';
@@ -16,6 +17,7 @@ import 'service/shop_service.dart';
 // Models
 import 'models/shop_model.dart';
 import 'models/product_model.dart'; // ← THÊM: CHO PRODUCT DETAIL
+import 'models/cart_model.dart';
 
 // Screens
 import 'screens/admins/admin_shops_screen.dart';
@@ -37,6 +39,8 @@ import 'screens/shops/shop_detail_screen.dart';
 import 'screens/products/product_detail_screen.dart';
 import 'screens/products/add_product_screen.dart';
 import 'screens/products//add_variant_screen.dart'; // (Tùy chọn)
+import 'screens/carts/cart_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,6 +55,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ShopProvider(service: ShopService())),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+
       ],
       child: const MyApp(),
     ),
@@ -126,6 +132,8 @@ class MyApp extends StatelessWidget {
           final productId = args['productId'] as int;
           return AddVariantScreen(productId: productId);
         },
+        // === CARTS ===
+        '/cart': (context) => const CartScreen(),
       },
     );
   }

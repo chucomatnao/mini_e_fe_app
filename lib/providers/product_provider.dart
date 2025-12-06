@@ -494,4 +494,66 @@ class ProductProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  // ========================================================================
+  // [MỚI] 12. XÓA MỘT BIẾN THỂ (DELETE)
+  // Khớp với: ProductApi.variant(productId, variantId)
+  // ========================================================================
+  Future<bool> deleteVariant(int productId, int variantId) async {
+    try {
+      final token = await _getToken();
+
+      // Gọi API DELETE /products/{id}/variants/{variantId}
+      await _dio.delete(
+        ProductApi.variant(productId, variantId),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      print('DEBUG: Đã xóa variant ID=$variantId thành công');
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      _error = _handleDioError(e);
+      print('Dio Error deleteVariant: ${e.response?.data}');
+      notifyListeners();
+      return false;
+    } catch (e) {
+      print('Error deleteVariant: $e');
+      return false;
+    }
+  }
+
+  // ========================================================================
+  // [MỚI] 13. TẠO MỘT BIẾN THỂ THỦ CÔNG (CREATE SINGLE)
+  // Khớp với: ProductApi.variants(productId)
+  // ========================================================================
+  Future<dynamic> createVariant(int productId, Map<String, dynamic> dto) async {
+    try {
+      final token = await _getToken();
+
+      // Gọi API POST /products/{id}/variants
+      // Dùng endpoint danh sách (variants) với method POST để tạo mới 1 item
+      final response = await _dio.post(
+        ProductApi.variants(productId),
+        data: dto,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      print('DEBUG: Tạo variant thủ công thành công: ${response.data}');
+      notifyListeners();
+
+      // Trả về data của variant mới tạo (để UI cập nhật ID mới vào list)
+      // Giả sử backend trả về: { "data": { "id": 123, "name": "..." }, ... }
+      return response.data['data'];
+    } on DioException catch (e) {
+      _error = _handleDioError(e);
+      print('Dio Error createVariant: ${e.response?.data}');
+      notifyListeners();
+      return null;
+    } catch (e) {
+      print('Error createVariant: $e');
+      return null;
+    }
+  }
+
 }
