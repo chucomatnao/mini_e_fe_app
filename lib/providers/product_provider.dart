@@ -489,14 +489,13 @@ class ProductProvider with ChangeNotifier {
   // 11. REFRESH & CLEAR
   // ========================================================================
   Future<void> refresh() => fetchProducts(showLoading: false);
-
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
   // ========================================================================
-  // [MỚI] 12. XÓA MỘT BIẾN THỂ (DELETE)
+  //  12. XÓA MỘT BIẾN THỂ (DELETE)
   // Khớp với: ProductApi.variant(productId, variantId)
   // ========================================================================
   Future<bool> deleteVariant(int productId, int variantId) async {
@@ -524,7 +523,7 @@ class ProductProvider with ChangeNotifier {
   }
 
   // ========================================================================
-  // [MỚI] 13. TẠO MỘT BIẾN THỂ THỦ CÔNG (CREATE SINGLE)
+  // 13. TẠO MỘT BIẾN THỂ THỦ CÔNG (CREATE SINGLE)
   // Khớp với: ProductApi.variants(productId)
   // ========================================================================
   Future<dynamic> createVariant(int productId, Map<String, dynamic> dto) async {
@@ -554,6 +553,60 @@ class ProductProvider with ChangeNotifier {
       print('Error createVariant: $e');
       return null;
     }
+  }
+
+  // ========================================================================
+// 14. CẬP NHẬT CHỈ TRẠNG THÁI SẢN PHẨM (DRAFT ↔ ACTIVE)
+// ========================================================================
+  Future<bool> updateProductStatus({
+    required int productId,
+    required String status,
+  }) async {
+    try {
+      final token = await _getToken();
+
+      final response = await _dio.patch(
+        ProductApi.byId(productId),
+        data: {'status': status},
+        options: Options(headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        }),
+      );
+
+      final updatedProduct = ProductModel.fromJson(response.data['data']);
+      final index = _products.indexWhere((p) => p.id == productId);
+      if (index != -1) {
+        _products[index] = updatedProduct;
+        notifyListeners();
+      }
+
+      print('DEBUG: Đã cập nhật trạng thái sản phẩm $productId → $status');
+      return true;
+    } on DioException catch (e) {
+      _error = _handleDioError(e);
+      print('Dio Error updateProductStatus: ${e.response?.data}');
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = 'Lỗi cập nhật trạng thái: $e';
+      print('Error updateProductStatus: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
+// ========================================================================
+// 15. ĐẢO TRẠNG THÁI TỰ ĐỘNG
+// ========================================================================
+  Future<bool> toggleProductStatus(int productId) async {
+    final product = _products.firstWhere(
+          (p) => p.id == productId,
+      orElse: () => ProductModel(id: productId, title: '', price: 0, imageUrl: '', shopId: 0),
+    );
+
+    final newStatus = product.status == 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
+    return await updateProductStatus(productId: productId, status: newStatus);
   }
 
 }
