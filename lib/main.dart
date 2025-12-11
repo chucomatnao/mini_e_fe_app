@@ -56,19 +56,20 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ShopProvider(service: ShopService())),
         ChangeNotifierProvider(create: (_) => CartProvider()),
-
       ],
       child: const MyApp(),
     ),
   );
 
-  // SAU KHI INIT → GỌI FETCH PRODUCTS
+  // SAU KHI KHỞI TẠO ỨNG DỤNG → TỰ ĐỘNG TẢI SẢN PHẨM CHO TRANG CHỦ (chỉ ACTIVE)
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await authProvider.init();
 
     final context = AuthProvider.navigatorKey.currentContext;
     if (context != null) {
-      Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+      // ĐÃ SỬA: Dùng fetchPublicProducts() thay vì fetchProducts()
+      Provider.of<ProductProvider>(context, listen: false)
+          .fetchPublicProducts();
     }
   });
 }
@@ -91,16 +92,18 @@ class MyApp extends StatelessWidget {
       routes: {
         // === AUTH & USER ===
         '/login': (context) => const LoginScreen(),
-        '/register': (context) =>  RegisterScreen(),
+        '/register': (context) => RegisterScreen(),
         '/home': (context) {
+          // Tự động tải sản phẩm công khai (chỉ ACTIVE) khi vào trang chủ
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+            Provider.of<ProductProvider>(context, listen: false)
+                .fetchPublicProducts(); // ĐÃ SỬA
           });
           return const HomeScreen();
         },
-        '/forgot-password': (context) =>  ForgotPasswordScreen(),
+        '/forgot-password': (context) => ForgotPasswordScreen(),
         '/verify-account': (context) => const VerifyAccountScreen(),
-        '/reset-otp': (context) =>  ResetOtpScreen(),
+        '/reset-otp': (context) => ResetOtpScreen(),
         '/profile': (context) => const ProfileScreen(),
 
         // === SHOP ===
@@ -108,31 +111,32 @@ class MyApp extends StatelessWidget {
         '/shop-register': (context) => const ShopRegisterScreen(),
         '/personal-info': (context) => const PersonalInfoScreen(),
         '/shops': (context) => const ShopListScreen(),
+
         // === ADMIN ===
-        '/admin-home': (context) =>  AdminHomeScreen(),
+        '/admin-home': (context) => AdminHomeScreen(),
         '/admin/shops': (context) => AdminShopsScreen(),
         '/admin/users': (context) => AdminUsersScreen(),
-        '/admin-shop-approval': (context) =>  AdminShopApprovalScreen(),
+        '/admin-shop-approval': (context) => AdminShopApprovalScreen(),
 
-        // === SHOP DETAIL (có argument) ===
+        // === SHOP DETAIL ===
         '/shop-detail': (context) {
           final shop = ModalRoute.of(context)!.settings.arguments as ShopModel;
           return ShopDetailScreen(shop: shop);
         },
 
-        // === PRODUCT: MỚI THÊM ===
+        // === PRODUCT ===
         '/product-detail': (context) {
           final product = ModalRoute.of(context)!.settings.arguments as ProductModel;
           return ProductDetailScreen(product: product);
         },
-
         '/add-product': (context) => const AddProductScreen(),
         '/add-variant': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
           final productId = args['productId'] as int;
           return AddVariantScreen(productId: productId);
         },
-        // === CARTS ===
+
+        // === CART ===
         '/cart': (context) => const CartScreen(),
       },
     );

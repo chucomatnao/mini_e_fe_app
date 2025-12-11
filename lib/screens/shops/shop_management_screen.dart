@@ -29,7 +29,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen>
       final auth = context.read<AuthProvider>();
       if (auth.accessToken != null) {
         context.read<ShopProvider>().loadMyShop();
-        context.read<ProductProvider>().fetchProducts();
+        context.read<ProductProvider>().fetchAllProductsForSeller();
       }
     });
   }
