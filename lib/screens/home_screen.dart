@@ -13,7 +13,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // --- GIỮ NGUYÊN LOGIC CŨ (Cache & Init) ---
   final Map<int, int> _stockCache = {};
 
   @override
@@ -24,20 +23,21 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // --- GIỮ NGUYÊN LOGIC CŨ (Lấy tồn kho) ---
+  // --- SỬA LOGIC LẤY TỒN KHO ---
   Future<int> _getRealStock(ProductModel product) async {
     if (_stockCache.containsKey(product.id)) {
       return _stockCache[product.id]!;
     }
     try {
       final provider = Provider.of<ProductProvider>(context, listen: false);
-      final variants = await provider.listVariants(product.id);
+      // SỬA: Dùng getVariants thay vì listVariants
+      final variants = await provider.getVariants(product.id);
+
       int total = 0;
-      if (variants != null && variants.isNotEmpty) {
+      if (variants.isNotEmpty) {
+        // SỬA: Truy cập thuộc tính object (v.stock)
         for (var v in variants) {
-          final s = v['stock'];
-          if (s is int) total += s;
-          if (s is String) total += int.tryParse(s) ?? 0;
+          total += v.stock;
         }
       } else {
         total = product.stock ?? 0;
@@ -51,19 +51,24 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // --- GIỮ NGUYÊN LOGIC CŨ (Dialog thêm giỏ hàng) ---
+  // --- SỬA LOGIC DIALOG GIỎ HÀNG ---
   void _showProductCartDialog(ProductModel product, {bool isBuyNow = false}) async {
     int quantity = 1;
     int? selectedVariantId;
-    List<dynamic> variants = [];
+
+    // SỬA: Đổi kiểu List<dynamic> thành List<VariantItem>
+    List<VariantItem> variants = [];
 
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     try {
-      final result = await productProvider.listVariants(product.id);
-      variants = result ?? [];
+      // SỬA: Gọi hàm getVariants
+      final result = await productProvider.getVariants(product.id);
+      variants = result;
     } catch (e) {
       variants = [];
     }
+
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -72,14 +77,12 @@ class _HomeScreenState extends State<HomeScreen> {
           int maxStock = _stockCache[product.id] ?? 999999;
 
           if (selectedVariantId != null) {
+            // SỬA: Tìm biến thể theo object syntax
             final selected = variants.firstWhere(
-                  (v) => v['id'] == selectedVariantId,
-              orElse: () => null,
+                  (v) => v.id == selectedVariantId,
+              orElse: () => variants[0], // fallback an toàn
             );
-            if (selected != null) {
-              final s = selected['stock'];
-              maxStock = s is int ? s : (s is String ? int.tryParse(s) ?? 0 : 0);
-            }
+            maxStock = selected.stock;
           }
 
           return Dialog(
@@ -135,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+
                   if (variants.isNotEmpty) ...[
                     const Text('Phân loại:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 10),
@@ -142,12 +146,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       spacing: 10,
                       runSpacing: 10,
                       children: variants.map((v) {
-                        final isSelected = selectedVariantId == v['id'];
-                        final stock = v['stock'] is int ? v['stock'] : (v['stock'] is String ? int.tryParse(v['stock']) ?? 0 : 0);
+                        // SỬA: Truy cập thuộc tính object
+                        final isSelected = selectedVariantId == v.id;
+                        final stock = v.stock;
+
                         return ChoiceChip(
-                          label: Text('${v['name']} ($stock)'),
+                          label: Text('${v.name} ($stock)'),
                           selected: isSelected,
-                          onSelected: stock <= 0 ? null : (val) => setStateDialog(() => selectedVariantId = val ? v['id'] : null),
+                          onSelected: stock <= 0 ? null : (val) => setStateDialog(() => selectedVariantId = val ? v.id : null),
                           selectedColor: const Color(0xFF0D6EFD),
                           labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
                           backgroundColor: Colors.grey.shade100,
@@ -156,6 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 20),
                   ],
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -206,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- GIAO DIỆN MỚI THEO PHÁC HỌA ---
+  // --- GIAO DIỆN (GIỮ NGUYÊN) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -216,7 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Colors.black87),
-          // --- CẬP NHẬT 1: Bấm menu để vào trang Profile ---
           onPressed: () => Navigator.pushNamed(context, '/profile'),
         ),
         centerTitle: true,
@@ -268,12 +274,12 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const SizedBox(height: 10),
 
-            // 1. BANNER "BỘ SƯU TẬP MÙA HÈ"
+            // BANNER
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               height: 180,
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5), // Màu nền xám nhạt
+                color: const Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Stack(
@@ -307,7 +313,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  // Placeholder cho ảnh cô gái bên phải
                   Positioned(
                     right: 0,
                     bottom: 0,
@@ -323,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            // 2. DANH MỤC HÌNH TRÒN (Category)
+            // CATEGORIES
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -339,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            // 3. TIÊU ĐỀ: SẢN PHẨM NỔI BẬT
+            // FEATURED PRODUCTS
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
@@ -350,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            // 4. LƯỚI SẢN PHẨM (Logic cũ, Giao diện mới)
+            // PRODUCT GRID
             Consumer<ProductProvider>(
               builder: (context, productProvider, child) {
                 if (productProvider.isLoading) {
@@ -373,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 0.65, // Tỉ lệ thẻ dài hơn để chứa nút
+                    childAspectRatio: 0.65,
                   ),
                   itemCount: productProvider.products.length,
                   itemBuilder: (context, index) {
@@ -392,7 +397,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Ảnh sản phẩm lớn
                             Expanded(
                               flex: 5,
                               child: ClipRRect(
@@ -406,7 +410,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                           ? Image.network(product.imageUrl, fit: BoxFit.cover)
                                           : const Icon(Icons.image, size: 50, color: Colors.grey),
                                     ),
-                                    // Tag giá nhỏ góc trái
                                     Positioned(
                                       top: 8,
                                       left: 8,
@@ -420,7 +423,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             ),
-                            // Thông tin và Nút bấm
                             Expanded(
                               flex: 4,
                               child: Padding(
@@ -451,7 +453,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ],
                                     ),
-                                    // Nút "Thêm vào giỏ" full chiều ngang
                                     SizedBox(
                                       width: double.infinity,
                                       height: 36,
@@ -485,7 +486,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      // BOTTOM NAV
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: 0,
@@ -494,7 +494,6 @@ class _HomeScreenState extends State<HomeScreen> {
         showSelectedLabels: true,
         showUnselectedLabels: true,
         onTap: (index) {
-          // --- CẬP NHẬT 2: Bấm nút "Tôi" (index 3) để vào trang Personal Info ---
           if (index == 3) {
             Navigator.pushNamed(context, '/personal-info');
           }
@@ -510,7 +509,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Widget phụ cho Category hình tròn
 class _CircleCategoryItem extends StatelessWidget {
   final IconData icon;
   final String label;

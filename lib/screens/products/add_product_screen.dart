@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../providers/product_provider.dart';
-import '../../models/product_model.dart';
+import '/../providers/product_provider.dart';
+import '/../models/product_model.dart';
 import 'add_variant_screen.dart';
-import 'update_variant_screen.dart';
+import 'edit_product_screen.dart'; // Đảm bảo bạn có file này
 
 class AddProductScreen extends StatefulWidget {
   final ProductModel? editProduct;
@@ -23,13 +23,13 @@ class AddProductScreen extends StatefulWidget {
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers (đã bỏ _stockController)
+  // Controllers
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _priceController;
   late final TextEditingController _slugController;
 
-  // Ảnh mới (chỉ giữ ảnh mới, không load ảnh cũ)
+  // Ảnh mới
   List<File> _images = [];
   List<Uint8List> _imageBytes = [];
 
@@ -236,7 +236,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Nút quản lý biến thể (chỉ khi đang chỉnh sửa)
+              // === NÚT QUẢN LÝ BIẾN THỂ (ĐÃ SỬA LỖI TẠI ĐÂY) ===
               if (isEditMode)
                 Center(
                   child: OutlinedButton.icon(
@@ -244,8 +244,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => UpdateVariantScreen(
-                            productId: widget.editProduct!.id,
+                          builder: (_) => EditProductScreen(
+                            // SỬA: Truyền 'product' thay vì 'productId'
+                            product: widget.editProduct!,
                           ),
                         ),
                       );

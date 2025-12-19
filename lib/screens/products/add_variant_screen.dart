@@ -1,8 +1,8 @@
 // lib/screens/add_variant_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/../../providers/product_provider.dart';
-import 'update_variant_screen.dart';
+import '/../providers/product_provider.dart'; // Đảm bảo đường dẫn đúng
+import 'edit_product_screen.dart';
 
 class AddVariantScreen extends StatefulWidget {
   final int productId;
@@ -13,10 +13,7 @@ class AddVariantScreen extends StatefulWidget {
 }
 
 class _AddVariantScreenState extends State<AddVariantScreen> {
-  // Cấu trúc mới:
-  // 'name': Controller cho tên (Màu sắc)
-  // 'values': List<String> chứa các giá trị thực (['Đỏ', 'Xanh'])
-  // 'tempValue': Controller cho ô nhập liệu tạm thời
+  // Cấu trúc: 'name': Controller, 'values': List<String>, 'tempValue': Controller
   final List<Map<String, dynamic>> _options = [];
 
   // Màu chủ đạo
@@ -38,7 +35,7 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
         _options.add({
           'name': TextEditingController(),
           'values': <String>[], // List chứa các tag đã nhập
-          'tempValue': TextEditingController(), // Ô nhập liệu nhập xong sẽ clear
+          'tempValue': TextEditingController(), // Ô nhập liệu
         });
       });
     } else {
@@ -71,7 +68,6 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
         _options[index]['tempValue'].clear(); // Clear ô nhập sau khi thêm
       });
     } else {
-      // Nếu trùng thì chỉ clear text
       _options[index]['tempValue'].clear();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Giá trị "$val" đã tồn tại!'), duration: const Duration(seconds: 1)),
@@ -238,12 +234,9 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
                       onPressed: () => _addValueToOption(index, opt['tempValue'].text),
                     ),
                   ),
-                  // Xử lý khi nhấn Enter trên bàn phím
                   onSubmitted: (val) => _addValueToOption(index, val),
-                  // Xử lý khi nhấn dấu phẩy
                   onChanged: (val) {
                     if (val.contains(',')) {
-                      // Tách chuỗi trước dấu phẩy để thêm vào list
                       final newValue = val.replaceAll(',', '');
                       _addValueToOption(index, newValue);
                     }
@@ -320,7 +313,7 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
               )
                   : const Text(
-                'Tạo danh sách biến thể',
+                'Tạo và cấu hình giá',
                 style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
@@ -330,33 +323,30 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
     );
   }
 
+  // === ĐÃ SỬA LOGIC TẠI ĐÂY ===
   Future<void> _submitVariants() async {
     final provider = Provider.of<ProductProvider>(context, listen: false);
 
-    // Chuẩn bị dữ liệu để gửi đi
-    // Lưu ý: Bây giờ 'values' đã là List<String> rồi, không cần split nữa
+    // 1. Chuẩn bị dữ liệu
     final List<Map<String, dynamic>> options = _options.map((opt) {
       return {
         'name': (opt['name'] as TextEditingController).text.trim(),
-        'values': opt['values'] as List<String>, // Lấy trực tiếp List
+        'values': opt['values'] as List<String>,
       };
     }).toList();
 
-    // Validate
+    // 2. Validate
     if (options.any((o) => o['name'].toString().isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tên thuộc tính không được để trống')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tên thuộc tính không được để trống')));
       return;
     }
     if (options.any((o) => (o['values'] as List).isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mỗi thuộc tính phải có ít nhất 1 giá trị')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mỗi thuộc tính phải có ít nhất 1 giá trị')));
       return;
     }
 
     try {
+      // 3. Gọi API Generate (Tạo biến thể)
       final result = await provider.generateVariants(
         widget.productId,
         options,
@@ -364,16 +354,26 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
       );
 
       if (result != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tạo biến thể thành công!'), backgroundColor: Colors.green),
-        );
+        // 4. Gọi thêm API lấy chi tiết sản phẩm (Để có ProductModel)
+        final updatedProduct = await provider.fetchProductDetail(widget.productId);
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (ctx) => UpdateVariantScreen(productId: widget.productId),
-          ),
-        );
+        if (updatedProduct != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tạo biến thể thành công!'), backgroundColor: Colors.green),
+          );
+
+          // 5. Chuyển sang EditProductScreen với object 'product'
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (ctx) => EditProductScreen(product: updatedProduct), // ĐÃ SỬA
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Lỗi tải dữ liệu sản phẩm mới')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
