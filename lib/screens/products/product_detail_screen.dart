@@ -367,7 +367,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       margin: const EdgeInsets.only(top: 10),
                       child: ElevatedButton(
                         onPressed: () async {
-                          // ... Logic nút bấm giữ nguyên như cũ ...
+                          // 1. Kiểm tra logic giao diện (giữ nguyên)
                           if (_variants.isNotEmpty && !isFullSelection) {
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn đầy đủ phân loại')));
                             return;
@@ -378,22 +378,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           }
 
                           final cartProvider = Provider.of<CartProvider>(context, listen: false);
-                          final success = await cartProvider.addItem(
-                              productId: _currentProduct.id,
-                              variantId: foundVariant?.id,
-                              quantity: quantity
-                          );
 
-                          if (!mounted) return;
-                          if (success) {
-                            Navigator.pop(context);
+                          // 2. SỬA: Gọi hàm addToCart và dùng try-catch
+                          // Vì Provider của bạn 'rethrow' lỗi, nên phải bắt lỗi ở đây để UI không bị crash
+                          try {
+                            await cartProvider.addToCart(
+                                _currentProduct.id, // productId
+                                variantId: foundVariant?.id, // variantId (có thể null)
+                                quantity: quantity // quantity
+                            );
+
+                            if (!mounted) return;
+
+                            // Thành công
+                            Navigator.pop(context); // Đóng bottom sheet
+
                             if (isBuyNow) {
                               Navigator.pushNamed(context, '/cart');
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã thêm vào giỏ hàng'), backgroundColor: Colors.green));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Đã thêm vào giỏ hàng'), backgroundColor: Colors.green)
+                              );
                             }
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cartProvider.error ?? 'Lỗi'), backgroundColor: Colors.red));
+                          } catch (e) {
+                            // Thất bại: Hiển thị lỗi từ catch hoặc từ errorMessage trong provider
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text(e.toString().replaceAll('Exception:', '').trim()), // Làm sạch thông báo lỗi
+                                    backgroundColor: Colors.red
+                                )
+                            );
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -447,7 +462,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             child: IconButton(onPressed: () {}, icon: const Icon(Icons.share, color: Colors.black, size: 20)),
           ),
           Consumer<CartProvider>(
-            builder: (_, cart, __) => Stack(
+            builder: (_, cartProvider, __) => Stack(
               children: [
                 Container(
                   margin: const EdgeInsets.only(right: 16),
@@ -457,13 +472,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black)
                   ),
                 ),
-                if ((cart.cart?.itemsCount ?? 0) > 0)
+                // SỬA: Dùng getter 'totalItems' từ Provider của bạn
+                if (cartProvider.totalItems > 0)
                   Positioned(
                     right: 14, top: 4,
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                      child: Text('${cart.cart!.itemsCount}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      // SỬA: Hiển thị totalItems
+                      child: Text(
+                          '${cartProvider.totalItems}',
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)
+                      ),
                     ),
                   )
               ],
