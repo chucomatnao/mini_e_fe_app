@@ -148,6 +148,8 @@ class AuthProvider with ChangeNotifier {
     try {
       await _authService.logout();
     } finally {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('access_token');
       _clearUserData();
       _accessToken = null;
       _navigateTo('/login');

@@ -52,7 +52,6 @@ class ProductApi {
   static String variant(int productId, int variantId) => '/products/$productId/variants/$variantId'; // PATCH, DELETE
 }
 class CartApi {
-  static const String myCart = '/cart';                    // GET: lấy giỏ hàng
-  static const String items = '/cart/items';              // POST: thêm item
-  static String itemById(int itemId) => '/cart/items/$itemId'; // PATCH & DELETE
+  static const String myCart = '/cart';
+  static const String items = '/cart/items';
 }
