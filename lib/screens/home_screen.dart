@@ -23,21 +23,19 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // --- SỬA LOGIC LẤY TỒN KHO ---
+  // --- LOGIC LẤY TỒN KHO ---
   Future<int> _getRealStock(ProductModel product) async {
     if (_stockCache.containsKey(product.id)) {
       return _stockCache[product.id]!;
     }
     try {
       final provider = Provider.of<ProductProvider>(context, listen: false);
-      // SỬA: Dùng getVariants thay vì listVariants
       final variants = await provider.getVariants(product.id);
 
       int total = 0;
       if (variants.isNotEmpty) {
-        // SỬA: Truy cập thuộc tính object (v.stock)
         for (var v in variants) {
-          total += v.stock;
+          total += (v.stock as int);
         }
       } else {
         total = product.stock ?? 0;
@@ -51,17 +49,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // --- SỬA LOGIC DIALOG GIỎ HÀNG ---
+  // --- LOGIC DIALOG GIỎ HÀNG (ĐÃ SỬA LỖI CRASH) ---
   void _showProductCartDialog(ProductModel product, {bool isBuyNow = false}) async {
     int quantity = 1;
     int? selectedVariantId;
 
-    // SỬA: Đổi kiểu List<dynamic> thành List<VariantItem>
-    List<VariantItem> variants = [];
+    // Khởi tạo list dynamic để tránh lỗi type checker quá khắt khe khi build UI ban đầu
+    List<dynamic> variants = [];
 
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     try {
-      // SỬA: Gọi hàm getVariants
+      // Lấy danh sách biến thể
       final result = await productProvider.getVariants(product.id);
       variants = result;
     } catch (e) {
@@ -77,12 +75,19 @@ class _HomeScreenState extends State<HomeScreen> {
           int maxStock = _stockCache[product.id] ?? 999999;
 
           if (selectedVariantId != null) {
-            // SỬA: Tìm biến thể theo object syntax
-            final selected = variants.firstWhere(
-                  (v) => v.id == selectedVariantId,
-              orElse: () => variants[0], // fallback an toàn
-            );
-            maxStock = selected.stock;
+            // --- SỬA LỖI TẠI ĐÂY: Dùng try-catch thay vì orElse: null ---
+            dynamic selected;
+            try {
+              // Tìm variant đang chọn
+              selected = variants.firstWhere((v) => v.id == selectedVariantId);
+            } catch (e) {
+              // Nếu không tìm thấy thì là null
+              selected = null;
+            }
+
+            if (selected != null) {
+              maxStock = selected.stock;
+            }
           }
 
           return Dialog(
@@ -94,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Nút đóng
                   Align(
                     alignment: Alignment.topRight,
                     child: IconButton(
@@ -101,6 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
+                  // Thông tin sản phẩm (Ảnh + Giá)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -112,7 +119,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 120,
                           width: 120,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(height: 120, width: 120, color: Colors.grey[300]),
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 120,
+                            width: 120,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                          ),
                         )
                             : Container(height: 120, width: 120, color: Colors.grey[300]),
                       ),
@@ -139,6 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 20),
 
+                  // Chọn Variant
                   if (variants.isNotEmpty) ...[
                     const Text('Phân loại:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 10),
@@ -146,7 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       spacing: 10,
                       runSpacing: 10,
                       children: variants.map((v) {
-                        // SỬA: Truy cập thuộc tính object
                         final isSelected = selectedVariantId == v.id;
                         final stock = v.stock;
 
@@ -163,6 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 20),
                   ],
 
+                  // Chọn số lượng
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -177,23 +190,58 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+
+                  // Nút hành động
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
+                        // 1. Kiểm tra logic chọn phân loại
                         if (variants.isNotEmpty && selectedVariantId == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn phân loại')));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Vui lòng chọn phân loại')));
                           return;
                         }
-                        final cartProvider = Provider.of<CartProvider>(context, listen: false);
-                        final success = await cartProvider.addItem(productId: product.id, variantId: selectedVariantId, quantity: quantity);
-                        if (!mounted) return;
-                        if (success) {
-                          Navigator.pop(context);
-                          if (isBuyNow) Navigator.pushNamed(context, '/cart');
-                          else ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã thêm vào giỏ'), backgroundColor: Colors.green));
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cartProvider.error ?? 'Lỗi'), backgroundColor: Colors.red));
+                        if (maxStock <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Sản phẩm đã hết hàng')));
+                          return;
+                        }
+
+                        // 2. GỌI PROVIDER
+                        try {
+                          await Provider.of<CartProvider>(context, listen: false).addToCart(
+                              product.id,
+                              variantId: selectedVariantId,
+                              quantity: quantity
+                          );
+
+                          if (!mounted) return;
+
+                          // 3. XỬ LÝ THÀNH CÔNG
+                          Navigator.pop(context); // Đóng Dialog
+
+                          if (isBuyNow) {
+                            Navigator.pushNamed(context, '/cart');
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Đã thêm vào giỏ hàng'),
+                                  backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
+                                )
+                            );
+                          }
+                        } catch (e) {
+                          // 4. XỬ LÝ LỖI
+                          if (!mounted) return;
+                          String msg = e.toString().replaceAll('Exception: ', '');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(msg),
+                                backgroundColor: Colors.red,
+                              )
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -213,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- GIAO DIỆN (GIỮ NGUYÊN) ---
+  // --- GIAO DIỆN CHÍNH ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -241,31 +289,37 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng tìm kiếm'))),
           ),
           Consumer<CartProvider>(
-            builder: (context, cartProvider, child) {
-              final itemsCount = cartProvider.cart?.itemsCount ?? 0;
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.shopping_cart_outlined, color: Colors.black87),
-                    onPressed: () => Navigator.pushNamed(context, '/cart'),
-                  ),
-                  if (itemsCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                        child: Text('$itemsCount', style: const TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center),
+            builder: (_, provider, __) => Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.pushNamed(context, '/cart'),
+                  icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black),
+                ),
+                if ((provider.cartData?.itemsCount ?? 0) > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
                       ),
-                    )
-                ],
-              );
-            },
+                      child: Text(
+                        '${provider.cartData!.itemsCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  )
+              ],
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
       ),
       body: SingleChildScrollView(
@@ -407,7 +461,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                       width: double.infinity,
                                       color: const Color(0xFFF9F9F9),
                                       child: product.imageUrl.isNotEmpty
-                                          ? Image.network(product.imageUrl, fit: BoxFit.cover)
+                                          ? Image.network(
+                                        product.imageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (ctx, error, stackTrace) {
+                                          return const Center(child: Icon(Icons.broken_image, color: Colors.grey));
+                                        },
+                                      )
                                           : const Icon(Icons.image, size: 50, color: Colors.grey),
                                     ),
                                     Positioned(
