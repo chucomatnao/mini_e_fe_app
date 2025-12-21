@@ -9,7 +9,7 @@ import '../../models/product_model.dart';
 
 // Screens
 import '../products/add_product_screen.dart';
-import '../products/edit_product_screen.dart'; // <--- QUAN TRỌNG: Import màn hình sửa
+import '../products/edit_product_screen.dart';
 
 class SellerProductListScreen extends StatefulWidget {
   const SellerProductListScreen({Key? key}) : super(key: key);
@@ -22,10 +22,36 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
   @override
   void initState() {
     super.initState();
-    // Gọi API lấy lại danh sách sản phẩm mới nhất mỗi khi vào màn hình này
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductProvider>().fetchAllProductsForSeller();
     });
+  }
+
+  // Hàm tính tổng tồn kho thực tế
+  int _calculateTotalStock(ProductModel product) {
+    // Nếu có variants → tính tổng stock từ các variant
+    if (product.variants != null && product.variants!.isNotEmpty) {
+      return product.variants!.fold(0, (sum, variant) => sum + variant.stock);
+    }
+    // Nếu không có variants → dùng stock của product (có thể null)
+    return product.stock ?? 0;
+  }
+
+  // Hàm chuyển trạng thái sản phẩm
+  Future<void> _toggleStatus(BuildContext context, ProductModel product) async {
+    final provider = context.read<ProductProvider>();
+    final success = await provider.toggleProductStatus(product.id);
+
+    if (success && mounted) {
+      final newStatus = product.status == 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã chuyển trạng thái sản phẩm thành $newStatus'),
+          backgroundColor: newStatus == 'ACTIVE' ? Colors.green : Colors.orange,
+        ),
+      );
+      provider.fetchAllProductsForSeller();
+    }
   }
 
   @override
@@ -105,13 +131,14 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
   }
 
   Widget _buildProductItem(BuildContext context, ProductModel product) {
-    // Xử lý ảnh an toàn từ Model
     final String? image =
     (product.imageUrl.isNotEmpty) ? product.imageUrl : null;
 
+    // Tính tổng tồn kho thực tế
+    final int totalStock = _calculateTotalStock(product);
+
     return InkWell(
       onTap: () {
-        // Xem chi tiết
         Navigator.pushNamed(
           context,
           '/product-detail',
@@ -154,7 +181,7 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product.title, // Dùng title chính xác
+                    product.title,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16),
                     maxLines: 2,
@@ -171,9 +198,10 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                     children: [
                       Icon(Icons.inventory, size: 14, color: Colors.grey[600]),
                       const SizedBox(width: 4),
-                      Text('Kho: ${product.stock ?? 0}',
-                          style:
-                          TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      Text(
+                        'Kho: $totalStock', // ← ĐÃ SỬA: Hiển thị tổng stock thực tế
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
                       const SizedBox(width: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -193,46 +221,59 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
               ),
             ),
 
-            // --- MENU THAO TÁC (SỬA / XÓA) ---
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Colors.grey),
-              onSelected: (value) async {
-                if (value == 'edit') {
-                  // --- SỬA LỖI Ở ĐÂY ---
-                  // Điều hướng sang EditProductScreen và truyền product vào
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EditProductScreen(product: product),
-                    ),
-                  );
-                  // Khi quay lại thì reload list để thấy thay đổi
-                  if (context.mounted) {
-                    context.read<ProductProvider>().fetchAllProductsForSeller();
-                  }
-                } else if (value == 'delete') {
-                  _confirmDeleteProduct(context, product.id);
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, size: 18, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text('Chỉnh sửa'),
-                      ],
-                    )),
-                const PopupMenuItem<String>(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Xóa', style: TextStyle(color: Colors.red)),
-                      ],
-                    )),
+            // --- NÚT CHUYỂN TRẠNG THÁI + MENU ---
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Nút chuyển trạng thái
+                IconButton(
+                  icon: Icon(
+                    product.status == 'ACTIVE' ? Icons.visibility : Icons.visibility_off,
+                    color: product.status == 'ACTIVE' ? Colors.green : Colors.grey,
+                  ),
+                  tooltip: product.status == 'ACTIVE' ? 'Ẩn sản phẩm' : 'Hiển thị sản phẩm',
+                  onPressed: () => _toggleStatus(context, product),
+                ),
+
+                // Menu cũ
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.grey),
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EditProductScreen(product: product),
+                        ),
+                      );
+                      if (context.mounted) {
+                        context.read<ProductProvider>().fetchAllProductsForSeller();
+                      }
+                    } else if (value == 'delete') {
+                      _confirmDeleteProduct(context, product.id);
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 18, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text('Chỉnh sửa'),
+                          ],
+                        )),
+                    const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Xóa', style: TextStyle(color: Colors.red)),
+                          ],
+                        )),
+                  ],
+                ),
               ],
             ),
           ],
@@ -259,14 +300,9 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
     );
 
     if (confirm == true && mounted) {
-      // Gọi Provider xóa (nếu provider đã có hàm deleteProduct)
-      // await context.read<ProductProvider>().deleteProduct(productId);
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã gửi yêu cầu xóa.')),
       );
-
-      // Reload lại list sau khi xóa (giả lập)
       context.read<ProductProvider>().fetchAllProductsForSeller();
     }
   }
