@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import '/../providers/product_provider.dart';
 import '/../models/product_model.dart';
 import 'add_variant_screen.dart';
-import 'edit_product_screen.dart'; // Đảm bảo bạn có file này
 
 class AddProductScreen extends StatefulWidget {
   final ProductModel? editProduct;
@@ -23,24 +22,23 @@ class AddProductScreen extends StatefulWidget {
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _priceController;
   late final TextEditingController _slugController;
 
-  // Ảnh mới
-  List<File> _images = [];
-  List<Uint8List> _imageBytes = [];
+  // Ảnh mới chọn
+  List<File> _images = [];          // Mobile
+  List<Uint8List> _imageBytes = []; // Web
+
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.editProduct?.title ?? '');
-    _descriptionController =
-        TextEditingController(text: widget.editProduct?.description ?? '');
-    _priceController =
-        TextEditingController(text: widget.editProduct?.price.toString() ?? '');
+    _descriptionController = TextEditingController(text: widget.editProduct?.description ?? '');
+    _priceController = TextEditingController(text: widget.editProduct?.price.toStringAsFixed(0) ?? '');
     _slugController = TextEditingController(text: widget.editProduct?.slug ?? '');
   }
 
@@ -53,7 +51,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     super.dispose();
   }
 
-  // Chọn ảnh
+  // Chọn nhiều ảnh
   Future<void> _pickImages() async {
     final picker = ImagePicker();
     final picked = await picker.pickMultiImage();
@@ -72,11 +70,31 @@ class _AddProductScreenState extends State<AddProductScreen> {
         _images.addAll(picked.map((xFile) => File(xFile.path)));
       });
     }
+
+    // Giới hạn tối đa 10 ảnh
+    if (kIsWeb && _imageBytes.length > 10) {
+      _imageBytes = _imageBytes.sublist(0, 10);
+    } else if (!kIsWeb && _images.length > 10) {
+      _images = _images.sublist(0, 10);
+    }
+  }
+
+  // Xóa ảnh đã chọn
+  void _removeImage(dynamic item) {
+    setState(() {
+      if (kIsWeb) {
+        _imageBytes.remove(item);
+      } else {
+        _images.remove(item);
+      }
+    });
   }
 
   // Submit form
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
 
     final provider = Provider.of<ProductProvider>(context, listen: false);
     final isEditMode = widget.editProduct != null;
@@ -85,58 +103,48 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     try {
       if (isEditMode) {
-        // CẬP NHẬT SẢN PHẨM
-        final hasNewImages =
-            (kIsWeb && _imageBytes.isNotEmpty) || (!kIsWeb && _images.isNotEmpty);
-
+        // Chỉ update text fields (backend chưa hỗ trợ update ảnh)
         final success = await provider.updateProduct(
           productId: widget.editProduct!.id,
           title: _titleController.text.trim(),
           price: price,
-          description: _descriptionController.text.trim().isNotEmpty
-              ? _descriptionController.text.trim()
-              : null,
-          slug: _slugController.text.trim().isNotEmpty
-              ? _slugController.text.trim()
-              : null,
-          images: (!kIsWeb && hasNewImages) ? _images : null,
-          imageBytes: (kIsWeb && hasNewImages) ? _imageBytes : null,
+          description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+          slug: _slugController.text.trim().isNotEmpty ? _slugController.text.trim() : null,
         );
 
         if (success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(hasNewImages
-                  ? 'Cập nhật sản phẩm thành công! Ảnh mới đã được thêm.'
-                  : 'Cập nhật sản phẩm thành công!'),
+            const SnackBar(
+              content: Text('Cập nhật sản phẩm thành công!'),
               backgroundColor: Colors.green,
             ),
           );
           Navigator.pop(context);
         }
       } else {
-        // TẠO MỚI SẢN PHẨM
-        final product = await provider.createProduct(
+        // TẠO SẢN PHẨM MỚI - UPLOAD ẢNH ĐÚNG CÁCH
+        final newProduct = await provider.createProduct(
           title: _titleController.text.trim(),
           price: price,
-          description: _descriptionController.text.trim().isNotEmpty
-              ? _descriptionController.text.trim()
-              : null,
-          slug: _slugController.text.trim().isNotEmpty
-              ? _slugController.text.trim()
-              : null,
-          images: kIsWeb ? null : (_images.isNotEmpty ? _images : null),
-          imageBytes: kIsWeb ? (_imageBytes.isNotEmpty ? _imageBytes : null) : null,
+          description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+          slug: _slugController.text.trim().isNotEmpty ? _slugController.text.trim() : null,
+          images: kIsWeb ? null : (_images.isNotEmpty ? _images : null),           // Mobile: gửi List<File>
+          imageBytes: kIsWeb ? (_imageBytes.isNotEmpty ? _imageBytes : null) : null, // Web: gửi List<Uint8List>
         );
 
-        if (product != null && mounted) {
+        if (newProduct != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tạo sản phẩm thành công!')),
+            const SnackBar(
+              content: Text('Tạo sản phẩm thành công!'),
+              backgroundColor: Colors.green,
+            ),
           );
+
+          // Chuyển sang màn hình thêm biến thể
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => AddVariantScreen(productId: product.id),
+              builder: (_) => AddVariantScreen(productId: newProduct.id),
             ),
           );
         }
@@ -144,15 +152,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<ProductProvider>(context);
     final isEditMode = widget.editProduct != null;
     final totalNewImages = kIsWeb ? _imageBytes.length : _images.length;
 
@@ -176,8 +190,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   labelText: 'Tên sản phẩm *',
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                v?.trim().isEmpty == true ? 'Vui lòng nhập tên sản phẩm' : null,
+                validator: (v) => v?.trim().isEmpty ?? true ? 'Vui lòng nhập tên sản phẩm' : null,
               ),
               const SizedBox(height: 16),
 
@@ -228,129 +241,88 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 ),
                 validator: (v) {
                   if (v?.trim().isEmpty ?? true) return 'Vui lòng nhập giá';
-                  if (double.tryParse(v!.replaceAll(',', '')) == null) {
-                    return 'Giá không hợp lệ';
+                  if (double.tryParse(v!.replaceAll(',', '')) == null || double.tryParse(v)! <= 0) {
+                    return 'Giá phải là số dương';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 24),
 
-              // === NÚT QUẢN LÝ BIẾN THỂ (ĐÃ SỬA LỖI TẠI ĐÂY) ===
-              if (isEditMode)
-                Center(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => EditProductScreen(
-                            // SỬA: Truyền 'product' thay vì 'productId'
-                            product: widget.editProduct!,
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.tune),
-                    label: const Text('Quản lý biến thể'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      side: const BorderSide(color: Colors.blue, width: 2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              // Ảnh hiện tại (chỉ khi edit)
+              if (isEditMode && widget.editProduct!.imageUrl.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Ảnh hiện tại:', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        widget.editProduct!.imageUrl,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
                       ),
                     ),
-                  ),
-                ),
-              if (isEditMode) const SizedBox(height: 32),
-
-              // Ảnh sản phẩm
-              const Text(
-                'Ảnh sản phẩm',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-
-              // Ảnh hiện tại (chỉ hiển thị khi edit - không cho xóa)
-              if (isEditMode && widget.editProduct!.imageUrl.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Ảnh hiện tại:',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          widget.editProduct!.imageUrl,
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ],
-                  ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
 
               // Ảnh mới đã chọn
               if (totalNewImages > 0)
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: (kIsWeb ? _imageBytes : _images).map((dynamic item) {
-                    final bytes = kIsWeb
-                        ? item as Uint8List
-                        : File((item as File).path).readAsBytesSync();
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ảnh mới (${totalNewImages}/10):',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: (kIsWeb ? _imageBytes : _images).map((dynamic item) {
+                        final bytes = kIsWeb
+                            ? item as Uint8List
+                            : File((item as File).path).readAsBytesSync();
 
-                    return Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.memory(
-                            bytes,
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () => setState(() {
-                              kIsWeb ? _imageBytes.remove(item) : _images.remove(item);
-                            }),
-                            child: const CircleAvatar(
-                              radius: 12,
-                              backgroundColor: Colors.red,
-                              child: Icon(Icons.close, size: 16, color: Colors.white),
+                        return Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.memory(
+                                bytes,
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }).toList(),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () => _removeImage(item),
+                                child: const CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: Colors.red,
+                                  child: Icon(Icons.close, size: 16, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
-
-              const SizedBox(height: 16),
 
               // Nút chọn ảnh
               ElevatedButton.icon(
                 onPressed: _pickImages,
                 icon: const Icon(Icons.add_photo_alternate),
-                label: Text(isEditMode
-                    ? 'Thêm ảnh mới (tối đa 10)'
-                    : 'Chọn ảnh sản phẩm (tối đa 10)'),
+                label: Text('Chọn ảnh sản phẩm (tối đa 10, đã chọn: $totalNewImages)'),
               ),
               const SizedBox(height: 32),
 
@@ -362,14 +334,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: const Color(0xFF0D6EFD),
                   ),
-                  onPressed: provider.isLoading
-                      ? null
-                      : () {
-                    if (_formKey.currentState!.validate()) {
-                      _submitForm();
-                    }
-                  },
-                  child: provider.isLoading
+                  onPressed: _isLoading ? null : _submitForm,
+                  child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : Text(
                     isEditMode ? 'Cập nhật sản phẩm' : 'Tạo sản phẩm',
@@ -377,6 +343,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
