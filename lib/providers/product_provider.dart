@@ -453,16 +453,15 @@ class ProductProvider with ChangeNotifier {
   // ========================================================================
   Future<bool> deleteVariant(int productId, int variantId) async {
     try {
-      final token = await _getToken();
-      await _dio.delete(
-        ProductApi.variant(productId, variantId),
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-      notifyListeners();
+      // 1. Gửi request xóa lên server
+      // Lưu ý: Đảm bảo đường dẫn API khớp với backend: DELETE /products/:id/variants/:variantId
+      await _dio.delete('/products/$productId/variants/$variantId');
+
+      // 2. Cập nhật lại danh sách biến thể ở local (nếu cần)
+      // Thông thường UI sẽ gọi lại hàm getVariants để làm mới, nên ở đây chỉ cần return true
       return true;
-    } on DioException catch (e) {
-      _error = _handleDioError(e);
-      notifyListeners();
+    } catch (e) {
+      print('Lỗi xóa biến thể: $e');
       return false;
     }
   }

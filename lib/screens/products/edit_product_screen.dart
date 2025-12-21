@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 // Models & Providers
 import '/../models/product_model.dart';
 import '/../providers/product_provider.dart';
+import 'add_variant_screen.dart';
 
 class EditProductScreen extends StatefulWidget {
   final ProductModel product;
@@ -192,56 +193,156 @@ class _EditProductScreenState extends State<EditProductScreen> with SingleTicker
     );
   }
 
+  Future<void> _loadVariants() async {
+    setState(() => _isLoadingVariants = true);
+    try {
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      // Gọi API lấy danh sách biến thể mới nhất
+      final variants = await provider.getVariants(widget.product.id);
+
+      if (mounted) {
+        setState(() {
+          _variants = variants;
+          _isLoadingVariants = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingVariants = false);
+      }
+    }
+  }
   // --- TAB 2 UI ---
   Widget _buildVariantsTab() {
-    if (_isLoadingVariants) return const Center(child: CircularProgressIndicator());
-
-    if (_variants.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Sản phẩm chưa có biến thể nào.', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 10),
-            ElevatedButton(
-                onPressed: () {
-                  // Chuyển sang trang tạo biến thể
-                  Navigator.pushNamed(context, '/add-variant', arguments: {'productId': widget.product.id})
-                      .then((_) => _fetchVariants()); // Reload khi quay lại
-                },
-                child: const Text('Tạo biến thể ngay')
-            )
-          ],
-        ),
-      );
+    if (_isLoadingVariants) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: _variants.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final item = _variants[index];
-        return Card(
-          elevation: 2,
-          child: ListTile(
-            title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('SKU: ${item.sku} | Tồn kho: ${item.stock}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('${item.price.toStringAsFixed(0)} đ', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
-                const Icon(Icons.edit, size: 20, color: Colors.blue),
-              ],
+    return Column(
+      children: [
+        // --- 1. NÚT TẠO BIẾN THỂ (GENERATE) ---
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.add_link),
+              label: const Text('Tạo biến thể tự động (Generate)'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D6EFD), // Màu xanh primary
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () {
+                // Chuyển sang màn hình tạo biến thể
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (ctx) => AddVariantScreen(productId: widget.product.id),
+                  ),
+                ).then((_) {
+                  // Khi quay lại thì reload danh sách để thấy biến thể mới
+                  _loadVariants();
+                });
+              },
             ),
-            onTap: () => _showEditVariantDialog(item),
           ),
-        );
-      },
+        ),
+
+        // --- 2. DANH SÁCH BIẾN THỂ ---
+        Expanded(
+          child: _variants.isEmpty
+              ? const Center(child: Text('Chưa có biến thể nào'))
+              : ListView.builder(
+            itemCount: _variants.length,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemBuilder: (context, index) {
+              final item = _variants[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+
+                  // Hiển thị tên (VD: Đỏ - S)
+                  title: Text(
+                    item.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+
+                  // Hiển thị SKU, Giá, Kho
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text('SKU: ${item.sku}'),
+                      Text(
+                        'Giá: ${item.price.toStringAsFixed(0)} đ  |  Kho: ${item.stock}',
+                        style: const TextStyle(color: Colors.green),
+                      ),
+                    ],
+                  ),
+
+                  // --- SỬA LỖI TẠI ĐÂY ---
+                  // Đổi _showQuickEditDialog thành _showEditVariantDialog
+                  onTap: () => _showEditVariantDialog(item),
+
+                  // --- 3. NÚT XÓA (THÙNG RÁC) ---
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => _confirmDeleteVariant(item),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
+  // Hàm hiển thị hộp thoại xác nhận xóa
+  void _confirmDeleteVariant(VariantItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận xóa'),
+        content: Text('Bạn có chắc muốn xóa biến thể "${item.name}" không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), // Đóng dialog
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx); // Đóng dialog trước khi xử lý
+
+              // Gọi Provider để xóa
+              // Sử dụng listen: false vì đang trong callback
+              final provider = Provider.of<ProductProvider>(context, listen: false);
+
+              // Gọi hàm deleteVariant đã có trong file product_provider.dart
+              final success = await provider.deleteVariant(widget.product.id, item.id);
+
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đã xóa biến thể thành công')),
+                );
+                // Reload lại danh sách sau khi xóa để cập nhật giao diện
+                _loadVariants();
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(provider.error ?? 'Xóa thất bại')),
+                );
+              }
+            },
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
   void _showEditVariantDialog(VariantItem item) {
     final priceCtrl = TextEditingController(text: item.price.toStringAsFixed(0));
     final stockCtrl = TextEditingController(text: item.stock.toString());
