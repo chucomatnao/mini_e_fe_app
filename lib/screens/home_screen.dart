@@ -23,7 +23,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // --- LOGIC LẤY TỒN KHO ---
   Future<int> _getRealStock(ProductModel product) async {
     if (_stockCache.containsKey(product.id)) {
       return _stockCache[product.id]!;
@@ -49,17 +48,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // --- LOGIC DIALOG GIỎ HÀNG (ĐÃ SỬA LỖI CRASH) ---
   void _showProductCartDialog(ProductModel product, {bool isBuyNow = false}) async {
     int quantity = 1;
     int? selectedVariantId;
-
-    // Khởi tạo list dynamic để tránh lỗi type checker quá khắt khe khi build UI ban đầu
     List<dynamic> variants = [];
 
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     try {
-      // Lấy danh sách biến thể
       final result = await productProvider.getVariants(product.id);
       variants = result;
     } catch (e) {
@@ -75,16 +70,12 @@ class _HomeScreenState extends State<HomeScreen> {
           int maxStock = _stockCache[product.id] ?? 999999;
 
           if (selectedVariantId != null) {
-            // --- SỬA LỖI TẠI ĐÂY: Dùng try-catch thay vì orElse: null ---
             dynamic selected;
             try {
-              // Tìm variant đang chọn
               selected = variants.firstWhere((v) => v.id == selectedVariantId);
             } catch (e) {
-              // Nếu không tìm thấy thì là null
               selected = null;
             }
-
             if (selected != null) {
               maxStock = selected.stock;
             }
@@ -99,7 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Nút đóng
                   Align(
                     alignment: Alignment.topRight,
                     child: IconButton(
@@ -107,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
-                  // Thông tin sản phẩm (Ảnh + Giá)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -135,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Text(product.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2),
                             const SizedBox(height: 8),
-                            Text('${product.price.toInt()}₫', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                            Text('${product.price.toInt()} VNĐ', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
                             const SizedBox(height: 8),
                             FutureBuilder<int>(
                               future: _getRealStock(product),
@@ -151,7 +140,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Chọn Variant
                   if (variants.isNotEmpty) ...[
                     const Text('Phân loại:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 10),
@@ -175,7 +163,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 20),
                   ],
 
-                  // Chọn số lượng
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -191,12 +178,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Nút hành động
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        // 1. Kiểm tra logic chọn phân loại
                         if (variants.isNotEmpty && selectedVariantId == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Vui lòng chọn phân loại')));
@@ -208,7 +193,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           return;
                         }
 
-                        // 2. GỌI PROVIDER
                         try {
                           await Provider.of<CartProvider>(context, listen: false).addToCart(
                               product.id,
@@ -218,8 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                           if (!mounted) return;
 
-                          // 3. XỬ LÝ THÀNH CÔNG
-                          Navigator.pop(context); // Đóng Dialog
+                          Navigator.pop(context);
 
                           if (isBuyNow) {
                             Navigator.pushNamed(context, '/cart');
@@ -233,7 +216,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           }
                         } catch (e) {
-                          // 4. XỬ LÝ LỖI
                           if (!mounted) return;
                           String msg = e.toString().replaceAll('Exception: ', '');
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -261,7 +243,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- GIAO DIỆN CHÍNH ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -398,7 +379,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            // FEATURED PRODUCTS
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
@@ -409,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            // PRODUCT GRID
+            // PRODUCT GRID - ĐÃ FIX OVERFLOW HOÀN TOÀN
             Consumer<ProductProvider>(
               builder: (context, productProvider, child) {
                 if (productProvider.isLoading) {
@@ -430,9 +410,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    crossAxisSpacing: 12,
+                    crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 0.65,
+                    childAspectRatio: 0.72,
                   ),
                   itemCount: productProvider.products.length,
                   itemBuilder: (context, index) {
@@ -442,91 +422,107 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(16),
                           boxShadow: [
-                            BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
                           ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // PHẦN HÌNH ẢNH
                             Expanded(
-                              flex: 5,
+                              flex: 6,
                               child: ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      width: double.infinity,
-                                      color: const Color(0xFFF9F9F9),
-                                      child: product.imageUrl.isNotEmpty
-                                          ? Image.network(
-                                        product.imageUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (ctx, error, stackTrace) {
-                                          return const Center(child: Icon(Icons.broken_image, color: Colors.grey));
-                                        },
-                                      )
-                                          : const Icon(Icons.image, size: 50, color: Colors.grey),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: product.imageUrl.isNotEmpty
+                                      ? Image.network(
+                                    product.imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (ctx, error, stackTrace) {
+                                      return Container(
+                                        color: const Color(0xFFF9F9F9),
+                                        child: const Center(
+                                          child: Icon(Icons.image_not_supported, size: 60, color: Colors.grey),
+                                        ),
+                                      );
+                                    },
+                                  )
+                                      : Container(
+                                    color: const Color(0xFFF9F9F9),
+                                    child: const Center(
+                                      child: Icon(Icons.image, size: 60, color: Colors.grey),
                                     ),
-                                    Positioned(
-                                      top: 8,
-                                      left: 8,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(4)),
-                                        child: Text('${product.price.toInt()}đ', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
+
+                            // PHẦN THÔNG TIN DƯỚI - FIX OVERFLOW
                             Expanded(
                               flex: 4,
                               child: Padding(
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8), // Giảm bottom padding
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          product.title,
-                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        FutureBuilder<int>(
-                                          future: _getRealStock(product),
-                                          builder: (context, snapshot) {
-                                            final stock = snapshot.data ?? 0;
-                                            return Text(
-                                              stock > 0 ? 'Còn: $stock' : 'Hết hàng',
-                                              style: TextStyle(fontSize: 11, color: stock > 0 ? Colors.grey : Colors.red),
-                                            );
-                                          },
-                                        ),
-                                      ],
+                                    // Tên sản phẩm
+                                    Text(
+                                      product.title,
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                    const SizedBox(height: 4),
+
+                                    // Giá tiền
+                                    Text(
+                                      '${product.price.toInt()} VNĐ',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+
+                                    // Tồn kho
+                                    FutureBuilder<int>(
+                                      future: _getRealStock(product),
+                                      builder: (context, snapshot) {
+                                        final stock = snapshot.data ?? 0;
+                                        return Text(
+                                          stock > 0 ? 'Còn $stock sản phẩm' : 'Hết hàng',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: stock > 0 ? Colors.grey.shade600 : Colors.red,
+                                          ),
+                                        );
+                                      },
+                                    ),
+
+                                    const Spacer(), // Linh hoạt đẩy nút xuống dưới
+
+                                    // Nút thêm giỏ - không fixed height
                                     SizedBox(
                                       width: double.infinity,
-                                      height: 36,
                                       child: OutlinedButton(
                                         onPressed: () => _showProductCartDialog(product),
                                         style: OutlinedButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          side: const BorderSide(color: Color(0xFFE0E0E0)),
-                                          backgroundColor: const Color(0xFFF9F9F9),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          backgroundColor: const Color(0xFF0D6EFD).withOpacity(0.05),
+                                          side: const BorderSide(color: Color(0xFF0D6EFD)),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          padding: const EdgeInsets.symmetric(vertical: 10),
                                         ),
                                         child: const Text(
                                           'Thêm vào giỏ',
-                                          style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500),
+                                          style: TextStyle(fontSize: 13, color: Color(0xFF0D6EFD), fontWeight: FontWeight.w600),
                                         ),
                                       ),
                                     ),
