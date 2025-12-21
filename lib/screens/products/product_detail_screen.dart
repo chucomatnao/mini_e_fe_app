@@ -1,3 +1,4 @@
+// lib/screens/products/product_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -13,9 +14,6 @@ import '../../providers/cart_provider.dart';
 // --- SCREENS ---
 import 'edit_product_screen.dart';
 
-// ==========================================
-// WIDGET CHÍNH: MÀN HÌNH CHI TIẾT SẢN PHẨM (MODERN UI)
-// ==========================================
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
   final bool isFromShopManagement;
@@ -31,7 +29,6 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  // --- 1. KHAI BÁO BIẾN TRẠNG THÁI (GIỮ NGUYÊN) ---
   bool _isLoadingVariants = false;
   List<VariantItem> _variants = [];
   bool _isUpdatingStatus = false;
@@ -39,14 +36,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _currentImageIndex = 0;
   bool _isDescriptionExpanded = false;
 
-  // --- MÀU SẮC GIAO DIỆN MỚI (MODERN THEME) ---
-  final Color _primaryColor = const Color(0xFF111827); // Màu đen than (Elegant)
-  final Color _accentColor = const Color(0xFF3B82F6);  // Màu xanh điểm nhấn
-  final Color _bgColor = const Color(0xFFF9FAFB);      // Màu nền trắng xám hiện đại
+  final Color _primaryColor = const Color(0xFF111827);
+  final Color _accentColor = const Color(0xFF3B82F6);
+  final Color _bgColor = const Color(0xFFF9FAFB);
   final Color _textTitleColor = const Color(0xFF111827);
   final Color _textBodyColor = const Color(0xFF6B7280);
 
-  // --- 2. KHỞI TẠO (GIỮ NGUYÊN) ---
   @override
   void initState() {
     super.initState();
@@ -54,7 +49,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _fetchVariants();
   }
 
-  // --- 3. LOGIC (GIỮ NGUYÊN) ---
   Future<void> _fetchVariants() async {
     setState(() => _isLoadingVariants = true);
     try {
@@ -72,8 +66,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   int get totalStock {
-    if (_variants.isEmpty) return _currentProduct.stock ?? 0;
-    return _variants.fold<int>(0, (sum, v) => sum + v.stock);
+    if (_variants.isNotEmpty) {
+      return _variants.fold<int>(0, (sum, v) => sum + v.stock);
+    }
+    return _currentProduct.stock ?? 0;
   }
 
   String _formatPrice(dynamic price) {
@@ -142,13 +138,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  // ==========================================
-  // BOTTOM SHEET (UI ĐƯỢC CHỈNH SỬA CHO ĐẸP HƠN)
-  // ==========================================
   void _showBottomSheetCart({bool isBuyNow = false}) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Cho phép full màn hình
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _buildCartBottomSheet(isBuyNow),
     );
@@ -159,13 +152,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     Map<String, String> selectedOptions = {};
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.7, // Bắt đầu ở 70% màn hình để tránh bị chật
-      minChildSize: 0.5,     // Tối thiểu 50%
-      maxChildSize: 0.95,    // Tối đa 95%
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
       builder: (_, scrollController) {
         return StatefulBuilder(
           builder: (context, setStateSheet) {
-            // ... (Logic tìm variant giữ nguyên như cũ) ...
             VariantItem? foundVariant;
             bool isFullSelection = false;
 
@@ -194,7 +186,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ? _formatPrice(foundVariant.price)
                 : _formatPrice(_currentProduct.price);
             String? variantNameDisplay = foundVariant?.name;
-            // ... (Hết phần logic cũ) ...
 
             return Container(
               decoration: const BoxDecoration(
@@ -203,9 +194,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Column(
-                mainAxisSize: MainAxisSize.min, // Quan trọng: Co lại theo nội dung
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 1. Handle Bar (Thanh gạch ngang)
                   Center(
                     child: Container(
                       width: 40, height: 4,
@@ -213,12 +203,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
                     ),
                   ),
-
-                  // 2. Header Sheet (Ảnh + Giá + Kho) - FIX TRÀN NGANG
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Ảnh sản phẩm (Fix lỗi crash nếu ảnh lỗi)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
@@ -233,23 +220,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      // Thông tin bên phải (Dùng Expanded để tránh tràn lề phải)
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Giá tiền
                             Text(
                               '₫$displayPrice',
                               style: TextStyle(fontSize: 22, color: _primaryColor, fontWeight: FontWeight.bold),
-                              overflow: TextOverflow.ellipsis, // Cắt bớt nếu quá dài
+                              overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
                             const SizedBox(height: 4),
-                            // Kho
                             Text('Kho: $maxStock', style: TextStyle(color: _textBodyColor, fontSize: 13)),
                             const SizedBox(height: 8),
-                            // Phân loại đã chọn
                             if (variantNameDisplay != null && isFullSelection)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -257,7 +240,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 child: Text(
                                   'Đã chọn: $variantNameDisplay',
                                   style: TextStyle(fontSize: 12, color: Colors.green.shade700),
-                                  overflow: TextOverflow.ellipsis, // Fix tràn
+                                  overflow: TextOverflow.ellipsis,
                                   maxLines: 1,
                                 ),
                               ),
@@ -268,12 +251,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   const SizedBox(height: 15),
                   const Divider(),
-
-                  // 3. Body Sheet (Cuộn được) - FIX TRÀN DỌC
                   Expanded(
                     child: ListView(
                       controller: scrollController,
-                      padding: EdgeInsets.zero, // Bỏ padding thừa
+                      padding: EdgeInsets.zero,
                       children: [
                         if (_currentProduct.optionSchema != null)
                           ..._currentProduct.optionSchema!.map((optionGroup) {
@@ -322,7 +303,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           }).toList(),
 
                         const SizedBox(height: 20),
-                        // Số lượng (Dùng MainAxisAlignment.spaceBetween để tránh lỗi RenderFlex)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -354,12 +334,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 40), // Khoảng trống dưới cùng để cuộn không bị che
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
-
-                  // 4. Button Confirm (Luôn ghim ở đáy)
                   SafeArea(
                     child: Container(
                       width: double.infinity,
@@ -367,7 +345,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       margin: const EdgeInsets.only(top: 10),
                       child: ElevatedButton(
                         onPressed: () async {
-                          // 1. Kiểm tra logic giao diện (giữ nguyên)
                           if (_variants.isNotEmpty && !isFullSelection) {
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn đầy đủ phân loại')));
                             return;
@@ -379,19 +356,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                           final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-                          // 2. SỬA: Gọi hàm addToCart và dùng try-catch
-                          // Vì Provider của bạn 'rethrow' lỗi, nên phải bắt lỗi ở đây để UI không bị crash
                           try {
                             await cartProvider.addToCart(
-                                _currentProduct.id, // productId
-                                variantId: foundVariant?.id, // variantId (có thể null)
-                                quantity: quantity // quantity
+                                _currentProduct.id,
+                                variantId: foundVariant?.id,
+                                quantity: quantity
                             );
 
                             if (!mounted) return;
 
-                            // Thành công
-                            Navigator.pop(context); // Đóng bottom sheet
+                            Navigator.pop(context);
 
                             if (isBuyNow) {
                               Navigator.pushNamed(context, '/cart');
@@ -401,11 +375,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               );
                             }
                           } catch (e) {
-                            // Thất bại: Hiển thị lỗi từ catch hoặc từ errorMessage trong provider
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                    content: Text(e.toString().replaceAll('Exception:', '').trim()), // Làm sạch thông báo lỗi
+                                    content: Text(e.toString().replaceAll('Exception:', '').trim()),
                                     backgroundColor: Colors.red
                                 )
                             );
@@ -432,18 +405,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ==========================================
-  // MAIN UI
-  // ==========================================
   @override
   Widget build(BuildContext context) {
     final canManage = _canManageProduct();
 
+    // Lấy danh sách ảnh đầy đủ từ product.images (backend trả về mảng)
+    final List<String> imageUrls = [];
+    if (_currentProduct.images != null && _currentProduct.images!.isNotEmpty) {
+      imageUrls.addAll(_currentProduct.images!.map((img) => img.url));
+    } else if (_currentProduct.imageUrl.isNotEmpty) {
+      imageUrls.add(_currentProduct.imageUrl);
+    }
+
     return Scaffold(
       backgroundColor: _bgColor,
-      extendBodyBehindAppBar: true, // Cho ảnh tràn lên AppBar
+      extendBodyBehindAppBar: true,
 
-      // APP BAR TRONG SUỐT CHO HIỆN ĐẠI
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -472,14 +449,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black)
                   ),
                 ),
-                // SỬA: Dùng getter 'totalItems' từ Provider của bạn
                 if (cartProvider.totalItems > 0)
                   Positioned(
                     right: 14, top: 4,
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                      // SỬA: Hiển thị totalItems
                       child: Text(
                           '${cartProvider.totalItems}',
                           style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)
@@ -500,50 +475,51 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // A. HÌNH ẢNH SẢN PHẨM (FULL WIDTH - VUÔNG)
+                  // === PHẦN HÌNH ẢNH - ĐÃ SỬA THÀNH CAROUSEL ===
                   SizedBox(
-                    height: MediaQuery.of(context).size.width, // Tỷ lệ 1:1
+                    height: MediaQuery.of(context).size.width,
                     width: double.infinity,
                     child: Stack(
                       alignment: Alignment.bottomCenter,
                       children: [
                         PageView.builder(
-                          itemCount: 1,
+                          itemCount: imageUrls.isNotEmpty ? imageUrls.length : 1,
                           onPageChanged: (idx) => setState(() => _currentImageIndex = idx),
                           itemBuilder: (ctx, index) {
+                            final url = imageUrls.isNotEmpty ? imageUrls[index] : _currentProduct.imageUrl;
                             return Image.network(
-                              _currentProduct.imageUrl,
+                              url,
                               fit: BoxFit.cover,
-                              errorBuilder: (_,__,___) => Container(
+                              errorBuilder: (_, __, ___) => Container(
                                 color: Colors.grey.shade200,
                                 child: const Center(child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey)),
                               ),
                             );
                           },
                         ),
-                        // Dot Indicator thay vì số
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(1, (index) => Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                              width: _currentImageIndex == index ? 20 : 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: _currentImageIndex == index ? Colors.white : Colors.white.withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            )),
-                          ),
-                        )
+                        // Dot Indicator
+                        if (imageUrls.length > 1)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(imageUrls.length, (index) => Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                width: _currentImageIndex == index ? 20 : 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: _currentImageIndex == index ? Colors.white : Colors.white.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              )),
+                            ),
+                          )
                       ],
                     ),
                   ),
 
-                  // B. NỘI DUNG CHÍNH (THIẾT KẾ CARD BO TRÒN LÊN TRÊN ẢNH)
                   Container(
-                    transform: Matrix4.translationValues(0, -20, 0), // Đẩy lên đè nhẹ lên ảnh
+                    transform: Matrix4.translationValues(0, -20, 0),
                     decoration: BoxDecoration(
                       color: _bgColor,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -553,7 +529,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       children: [
                         const SizedBox(height: 24),
 
-                        // 1. Tên & Giá
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Column(
@@ -569,7 +544,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textTitleColor, height: 1.3),
                                     ),
                                   ),
-                                  // Nút Favorite nhỏ
                                   IconButton(
                                     onPressed: () {},
                                     icon: const Icon(Icons.favorite_border, color: Colors.grey),
@@ -600,13 +574,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   ),
                                 ],
                               ),
+
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Icon(Icons.inventory, size: 16, color: _textBodyColor),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Kho: $totalStock',
+                                    style: TextStyle(fontSize: 14, color: _textBodyColor),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
 
                         const SizedBox(height: 20),
 
-                        // 2. Chọn Phân Loại (Style kiểu danh sách thay vì hiện hết ra)
                         if (_currentProduct.optionSchema != null && _currentProduct.optionSchema!.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -650,7 +635,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                         const SizedBox(height: 20),
 
-                        // 3. Thông tin Shop (Style Modern Card)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Container(
@@ -703,7 +687,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                         const SizedBox(height: 24),
 
-                        // 4. Mô tả sản phẩm
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Column(
@@ -732,7 +715,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                         ),
 
-                        // 5. Khu vực Quản lý (Chỉ chủ shop)
                         if (canManage) ...[
                           const Padding(
                             padding: EdgeInsets.fromLTRB(20, 30, 20, 10),
@@ -777,7 +759,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           )
                         ],
 
-                        const SizedBox(height: 100), // Padding dưới cùng
+                        const SizedBox(height: 100),
                       ],
                     ),
                   ),
@@ -788,7 +770,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ],
       ),
 
-      // BOTTOM NAVIGATION ACTION (Floating Style)
       bottomNavigationBar: canManage ? null : Container(
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
         decoration: BoxDecoration(
@@ -798,7 +779,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         child: SafeArea(
           child: Row(
             children: [
-              // Nút Chat (Minimal)
               Container(
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
@@ -811,8 +791,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-
-              // Nút Thêm Giỏ (Secondary)
               Expanded(
                 child: SizedBox(
                   height: 54,
@@ -827,8 +805,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-
-              // Nút Mua Ngay (Primary)
               Expanded(
                 child: SizedBox(
                   height: 54,
