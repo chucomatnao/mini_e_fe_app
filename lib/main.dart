@@ -94,10 +94,8 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(),
         '/home': (context) {
-          // Tự động tải sản phẩm công khai (chỉ ACTIVE) khi vào trang chủ
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Provider.of<ProductProvider>(context, listen: false)
-                .fetchPublicProducts(); // ĐÃ SỬA
+            Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
           });
           return const HomeScreen();
         },
@@ -120,20 +118,43 @@ class MyApp extends StatelessWidget {
 
         // === SHOP DETAIL ===
         '/shop-detail': (context) {
-          final shop = ModalRoute.of(context)!.settings.arguments as ShopModel;
-          return ShopDetailScreen(shop: shop);
+          final args = ModalRoute.of(context)!.settings.arguments;
+          if (args is ShopModel) {
+            return ShopDetailScreen(shop: args);
+          }
+          // Nếu không có hoặc sai → quay về home
+          return const HomeScreen();
         },
 
-        // === PRODUCT ===
+        // === PRODUCT DETAIL - ĐÃ SỬA AN TOÀN ===
         '/product-detail': (context) {
-          final product = ModalRoute.of(context)!.settings.arguments as ProductModel;
-          return ProductDetailScreen(product: product);
+          final args = ModalRoute.of(context)!.settings.arguments;
+          if (args is ProductModel) {
+            return ProductDetailScreen(product: args);
+          } else {
+            // Không có sản phẩm → hiển thị thông báo lỗi hoặc quay về home
+            return Scaffold(
+              appBar: AppBar(title: const Text('Lỗi')),
+              body: const Center(
+                child: Text(
+                  'Không tìm thấy sản phẩm.\nVui lòng thử lại.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            );
+          }
         },
+
         '/add-product': (context) => const AddProductScreen(),
+
         '/add-variant': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          final productId = args['productId'] as int;
-          return AddVariantScreen(productId: productId);
+          final args = ModalRoute.of(context)!.settings.arguments;
+          if (args is Map<String, dynamic> && args['productId'] is int) {
+            return AddVariantScreen(productId: args['productId'] as int);
+          }
+          // Sai định dạng → quay về home
+          return const HomeScreen();
         },
 
         // === CART ===
