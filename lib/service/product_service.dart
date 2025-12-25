@@ -54,14 +54,16 @@ class ProductService {
   Future<ProductModel> getProductById(int productId) async {
     try {
       final response = await _api.get(ProductApi.byId(productId));
-      return ProductModel.fromJson(response.data['data']);
+      final data = response.data['data'];
+      if (data == null) throw Exception('Dữ liệu sản phẩm trống');
+      return ProductModel.fromJson(data);
     } catch (e) {
       throw Exception('Không tìm thấy sản phẩm: $e');
     }
   }
 
   // ===========================================================================
-  // 3. SELLER: Tạo sản phẩm mới (Hỗ trợ Upload File ảnh trực tiếp)
+  // 3. SELLER: Tạo sản phẩm mới
   // ===========================================================================
   Future<ProductModel> createProduct({
     required int shopId,
@@ -72,7 +74,7 @@ class ProductService {
     double? compareAtPrice,
     required int stock,
     String status = 'DRAFT',
-    List<dynamic>? images, // Có thể là List<File> (mobile), List<Uint8List> (web), hoặc List<String> URLs (fallback)
+    List<dynamic>? images,
   }) async {
     try {
       final formData = FormData.fromMap({
@@ -86,9 +88,8 @@ class ProductService {
         'status': status,
       });
 
-      // Xử lý ảnh upload (File hoặc Uint8List)
+      // --- SỬA LOGIC UPLOAD ẢNH TẠI ĐÂY ---
       if (images != null && images.isNotEmpty) {
-        // Kiểm tra loại đầu tiên để xác định kiểu danh sách
         final firstItem = images.first;
 
         if (firstItem is File || firstItem is Uint8List) {
@@ -97,30 +98,22 @@ class ProductService {
             MultipartFile multipartFile;
 
             if (kIsWeb && item is Uint8List) {
-              // Web: từ Uint8List
               multipartFile = MultipartFile.fromBytes(
                 item,
-                filename: 'image_$i.jpg', // Cloudinary cần filename có extension
+                filename: 'image_$i.jpg',
                 contentType: MediaType('image', 'jpeg'),
               );
             } else if (!kIsWeb && item is File) {
-              // Mobile: từ File
               multipartFile = await MultipartFile.fromFile(
                 item.path,
-                filename: item.path.split('/').last, // Giữ nguyên tên file gốc
+                filename: item.path.split('/').last,
               );
             } else {
-              throw Exception('Loại ảnh không hỗ trợ');
+              continue;
             }
 
-            // Key phải là images[0], images[1]... để NestJS nhận đúng mảng
-            formData.files.add(MapEntry('images', multipartFile));
-          }
-        }
-        // Trường hợp hiếm: truyền trực tiếp List<String> URLs (fallback từ DTO cũ)
-        else if (firstItem is String) {
-          for (int i = 0; i < images.length; i++) {
-            formData.fields.add(MapEntry('images[$i]', images[i] as String));
+            // 🔥 QUAN TRỌNG: Đổi key từ 'images' thành 'files' để khớp với NestJS
+            formData.files.add(MapEntry('files', multipartFile));
           }
         }
       }
@@ -129,7 +122,7 @@ class ProductService {
         ProductApi.products,
         data: formData,
         options: Options(
-          contentType: 'multipart/form-data',
+          contentType: 'multipart/form-data', // Bắt buộc cho upload
         ),
       );
 
@@ -152,8 +145,7 @@ class ProductService {
         double? compareAtPrice,
         int? stock,
         String? status,
-        List<File>? newImages, // Ảnh mới muốn thêm
-        List<String>? keepImageUrls, // Danh sách URL ảnh cũ muốn giữ lại (nếu logic backend hỗ trợ)
+        List<File>? newImages,
       }) async {
     try {
       final formData = FormData();
@@ -166,12 +158,14 @@ class ProductService {
       if (stock != null) formData.fields.add(MapEntry('stock', stock.toString()));
       if (status != null) formData.fields.add(MapEntry('status', status));
 
-      // Upload ảnh mới
+      // --- SỬA LOGIC UPLOAD ẢNH MỚI TẠI ĐÂY ---
       if (newImages != null && newImages.isNotEmpty) {
         for (var file in newImages) {
           String fileName = file.path.split('/').last;
+
+          // 🔥 QUAN TRỌNG: Đổi key thành 'files'
           formData.files.add(MapEntry(
-            'images',
+            'files',
             await MultipartFile.fromFile(file.path, filename: fileName),
           ));
         }
@@ -190,7 +184,7 @@ class ProductService {
   }
 
   // ===========================================================================
-  // 5. QUẢN LÝ BIẾN THỂ (VARIANTS) - PHẦN MỚI THÊM QUAN TRỌNG
+  // 5. QUẢN LÝ BIẾN THỂ (VARIANTS)
   // ===========================================================================
 
   // Lấy danh sách biến thể
@@ -209,7 +203,7 @@ class ProductService {
     try {
       final response = await _api.post(
         ProductApi.generateVariants(productId),
-        data: data, // { "options": [...], "mode": "replace" }
+        data: data,
       );
       return response.data['data'];
     } catch (e) {

@@ -222,7 +222,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: CachedNetworkImage(
-                          imageUrl: bottomSheetImageUrl.isNotEmpty ? bottomSheetImageUrl : 'https://via.placeholder.com/150',
+                          imageUrl: bottomSheetImageUrl.isNotEmpty ? bottomSheetImageUrl : 'https://placehold.co/300x300.png',
                           width: 100,
                           height: 100,
                           fit: BoxFit.cover,
@@ -431,8 +431,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ? _currentProduct.images
         : [
       _currentProduct.imageUrl.isNotEmpty
-          ? ProductImage(id: 0, url: _currentProduct.imageUrl, isMain: true) // Đã xóa position: 0
-          : ProductImage(id: 0, url: 'https://via.placeholder.com/300', isMain: true) // Đã xóa position: 0
+          ? ProductImage(
+          id: 0,
+          url: _currentProduct.imageUrl,
+          isMain: true,
+          position: 0 // <--- THÊM DÒNG NÀY
+      )
+          : ProductImage(
+          id: 0,
+          url: 'https://placehold.co/600x600.png?text=No+Image',
+          isMain: true,
+          position: 0 // <--- VÀ THÊM DÒNG NÀY
+      )
     ];
 
     return Scaffold(

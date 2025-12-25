@@ -3,10 +3,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class ProductCard extends StatelessWidget {
-  final String id;
+  final String id; // Lưu ý: Backend ID là int, nhưng FE có thể ép sang String để hiển thị
   final String name;
   final double price;
-  final String imageUrl; // Biến này giờ đã chứa link đúng từ Model
+  final String imageUrl;
   final int stock;
   final VoidCallback onTap;
 
@@ -34,20 +34,20 @@ class ProductCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // === PHẦN HIỂN THỊ ẢNH (Đã sửa) ===
+              // === PHẦN HIỂN THỊ ẢNH (DEBUG VERSION) ===
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: SizedBox(
                   width: 100,
                   height: 100,
-                  child: _buildProductImage(), // Gọi hàm xử lý ảnh
+                  child: _buildProductImage(),
                 ),
               ),
-              // ===================================
+              // ==========================================
 
               const SizedBox(width: 12),
 
-              // ... (Phần thông tin Text bên phải giữ nguyên) ...
+              // Phần thông tin Text (Giữ nguyên)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,9 +89,17 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // Hàm tách riêng để xử lý logic hiển thị ảnh
+  // === HÀM XỬ LÝ ẢNH ĐỂ DEBUG ===
   Widget _buildProductImage() {
-    // TRƯỜNG HỢP 1: Không có link ảnh (rỗng hoặc null) -> Hiện khung xám
+    // 1. IN RA CONSOLE ĐỂ KIỂM TRA URL
+    // Hãy mở tab "Run" hoặc "Debug Console" trong IDE để xem dòng này
+    if (imageUrl.isNotEmpty) {
+      print('>>> DEBUG IMG [Product ID: $id]: $imageUrl');
+    } else {
+      print('>>> DEBUG IMG [Product ID: $id]: URL RỖNG !!!');
+    }
+
+    // TRƯỜNG HỢP 1: Không có link ảnh
     if (imageUrl.isEmpty) {
       return Container(
         color: Colors.grey[300],
@@ -101,28 +109,44 @@ class ProductCard extends StatelessWidget {
             children: [
               Icon(Icons.image_not_supported, color: Colors.grey, size: 30),
               SizedBox(height: 4),
-              Text("No Image", style: TextStyle(color: Colors.grey, fontSize: 10)),
+              Text("No URL", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
       );
     }
 
-    // TRƯỜNG HỢP 2: Có link ảnh -> Tải ảnh từ mạng
+    // TRƯỜNG HỢP 2: Có link -> Tải ảnh
     return CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
-      placeholder: (context, url) => const Center(
-        child: SizedBox(
-            width: 20, height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2)
-        ),
+
+      // Loading
+      placeholder: (context, url) => Container(
+        color: Colors.grey[100],
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
+
+      // Error Widget (Quan trọng để bắt lỗi)
       errorWidget: (context, url, error) {
-        // Nếu link chết/lỗi mạng -> Hiện khung xám
+        // In lỗi chi tiết ra console
+        print('!!! LỖI TẢI ẢNH [ID: $id]: $error');
+        print('!!! URL GÂY LỖI: $url');
+
         return Container(
-          color: Colors.grey[300],
-          child: const Icon(Icons.broken_image, color: Colors.grey),
+          color: Colors.red[50], // Nền đỏ nhạt để dễ nhận biết lỗi
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.broken_image, color: Colors.red),
+              const SizedBox(height: 2),
+              Text(
+                "Error Load",
+                style: TextStyle(color: Colors.red[800], fontSize: 10),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         );
       },
     );
