@@ -114,6 +114,16 @@ class ShopProvider with ChangeNotifier {
     }
   }
 
+  Future<ShopModel> getShopById(int id) async {
+    try {
+      // Gọi service vừa tạo ở Bước 1
+      return await service.getShopById(id);
+    } catch (e) {
+      // Ném lỗi ra để UI (try-catch trong _fetchShopInfo) xử lý
+      rethrow;
+    }
+  }
+
   // ==================== CLEAR ====================
   void clearShops() {
     _shops = [];

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 // --- MODELS ---
 import '../../models/product_model.dart';
+import '../../models/shop_model.dart'; // [MỚI] Import ShopModel
 
 // --- PROVIDERS ---
 import '../../providers/product_provider.dart';
@@ -14,6 +15,7 @@ import '../../providers/cart_provider.dart';
 
 // --- SCREENS ---
 import 'edit_product_screen.dart';
+import '../shops/shop_detail_screen.dart'; // [MỚI] Import màn hình chi tiết shop
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
@@ -37,6 +39,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _currentImageIndex = 0;
   bool _isDescriptionExpanded = false;
 
+  // [MỚI] Biến để lưu thông tin Shop của sản phẩm này
+  ShopModel? _sellerShop;
+  bool _isLoadingShop = false;
+
   final Color _primaryColor = const Color(0xFF111827);
   final Color _accentColor = const Color(0xFF3B82F6);
   final Color _bgColor = const Color(0xFFF9FAFB);
@@ -48,6 +54,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     super.initState();
     _currentProduct = widget.product;
     _fetchVariants();
+    _fetchShopInfo(); // [MỚI] Gọi hàm lấy thông tin shop
+  }
+
+  // [MỚI] Hàm lấy thông tin shop dựa trên shopId của sản phẩm
+  Future<void> _fetchShopInfo() async {
+    setState(() => _isLoadingShop = true);
+    try {
+      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+      final shop = await shopProvider.getShopById(widget.product.shopId);
+      if (mounted) {
+        setState(() {
+          _sellerShop = shop;
+          _isLoadingShop = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching shop info: $e');
+      if (mounted) setState(() => _isLoadingShop = false);
+    }
   }
 
   Future<void> _fetchVariants() async {
@@ -87,6 +112,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (authProvider.user == null || shopProvider.shop == null) return false;
     final userRole = authProvider.user!.role?.toUpperCase();
     final isSeller = userRole == 'SELLER';
+    // shopProvider.shop là shop của người đang đăng nhập (nếu họ là seller)
     final isOwnerOfThisShop = shopProvider.shop!.id == widget.product.shopId;
     return isSeller && isOwnerOfThisShop && widget.isFromShopManagement;
   }
@@ -184,7 +210,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 : _formatPrice(_currentProduct.price);
             String? variantNameDisplay = foundVariant?.name;
 
-            // ← MỚI: Ảnh hiển thị - ưu tiên ảnh variant nếu có
             String bottomSheetImageUrl = _currentProduct.imageUrl;
             if (foundVariant?.imageId != null && _currentProduct.images.isNotEmpty) {
               final variantImg = _currentProduct.images.firstWhere(
@@ -426,7 +451,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final canManage = _canManageProduct();
 
-    // Danh sách ảnh đầy đủ (ưu tiên images array từ backend)
     final List<ProductImage> images = _currentProduct.images.isNotEmpty
         ? _currentProduct.images
         : [
@@ -435,13 +459,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           id: 0,
           url: _currentProduct.imageUrl,
           isMain: true,
-          position: 0 // <--- THÊM DÒNG NÀY
+          position: 0
       )
           : ProductImage(
           id: 0,
           url: 'https://placehold.co/600x600.png?text=No+Image',
           isMain: true,
-          position: 0 // <--- VÀ THÊM DÒNG NÀY
+          position: 0
       )
     ];
 
@@ -505,7 +529,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 children: [
                   // Carousel ảnh (giữ nguyên)
                   SizedBox(
-                    height: MediaQuery.of(context).size.width + 60, // thêm chỗ cho thumbnail
+                    height: MediaQuery.of(context).size.width + 60,
                     child: Stack(
                       children: [
                         PageView.builder(
@@ -528,7 +552,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           },
                         ),
 
-                        // Dot indicator
                         if (images.length > 1)
                           Positioned(
                             bottom: 70,
@@ -548,7 +571,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           ),
 
-                        // Thumbnail list nhỏ dưới carousel
                         if (images.length > 1)
                           Positioned(
                             bottom: 8,
@@ -707,6 +729,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                         const SizedBox(height: 20),
 
+                        // --- [MỚI] SECTION THÔNG TIN SHOP THỰC TẾ ---
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Container(
@@ -716,14 +739,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
                             ),
-                            child: Row(
+                            child: _isLoadingShop
+                                ? const Center(child: Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2)))
+                                : Row(
                               children: [
+                                // Logo Shop
                                 Container(
                                   width: 50, height: 50,
                                   decoration: BoxDecoration(
                                     color: Colors.grey.shade200,
                                     borderRadius: BorderRadius.circular(25),
-                                    image: const DecorationImage(image: NetworkImage('https://via.placeholder.com/150'), fit: BoxFit.cover),
+                                    border: Border.all(color: Colors.grey.shade200),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(25),
+                                    child: _sellerShop?.logoUrl != null
+                                        ? CachedNetworkImage(
+                                      imageUrl: _sellerShop!.logoUrl!,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) => const Icon(Icons.store, color: Colors.grey),
+                                    )
+                                        : const Icon(Icons.store, color: Colors.grey),
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -731,20 +767,51 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Shop Chính Hãng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: _textTitleColor)),
+                                      // Tên Shop
+                                      Text(
+                                        _sellerShop?.name ?? 'Đang tải...',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: _textTitleColor),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+                                          Container(
+                                            width: 8, height: 8,
+                                            decoration: BoxDecoration(
+                                                color: _sellerShop?.status == 'ACTIVE' ? Colors.green : Colors.grey,
+                                                shape: BoxShape.circle
+                                            ),
+                                          ),
                                           const SizedBox(width: 6),
-                                          Text('Đang hoạt động', style: TextStyle(color: _textBodyColor, fontSize: 12)),
+                                          Text(
+                                            _sellerShop?.status == 'ACTIVE' ? 'Đang hoạt động' : 'Tạm nghỉ',
+                                            style: TextStyle(color: _textBodyColor, fontSize: 12),
+                                          ),
+                                          // Hiển thị thêm rating shop nếu có
+                                          if (_sellerShop != null) ...[
+                                            const SizedBox(width: 8),
+                                            const Text('|', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                                            const SizedBox(width: 8),
+                                            Icon(Icons.star, size: 12, color: Colors.amber[700]),
+                                            Text(
+                                              ' ${_sellerShop!.stats.ratingAvg.toStringAsFixed(1)}',
+                                              style: TextStyle(color: _textBodyColor, fontSize: 12, fontWeight: FontWeight.bold),
+                                            )
+                                          ]
                                         ],
                                       )
                                     ],
                                   ),
                                 ),
                                 OutlinedButton(
-                                  onPressed: (){},
+                                  onPressed: _sellerShop == null ? null : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => ShopDetailScreen(shop: _sellerShop!)),
+                                    );
+                                  },
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(color: _primaryColor),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -756,6 +823,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           ),
                         ),
+                        // --- KẾT THÚC SECTION THÔNG TIN SHOP ---
 
                         const SizedBox(height: 24),
 

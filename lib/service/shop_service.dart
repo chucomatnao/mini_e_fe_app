@@ -66,11 +66,19 @@ class ShopService {
     return items.map((e) => ShopModel.fromJson(e)).toList();
   }
 
+
   // ==================== HELPER ====================
   void _throwIfError(Response resp) {
     if (resp.statusCode! >= 400) {
       final message = resp.data['message'] ?? 'Lỗi không xác định';
       throw Exception(message);
     }
+  }
+
+  Future<ShopModel> getShopById(int id) async {
+    // Sử dụng endpoint byId (GET)
+    final resp = await _api.get(ShopsApi.byId('$id'));
+    _throwIfError(resp);
+    return ShopModel.fromJson(resp.data['data']);
   }
 }
