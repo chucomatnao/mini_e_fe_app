@@ -56,13 +56,19 @@ class ProductModel {
       // Ưu tiên 1: Ảnh có isMain = true
       // Ưu tiên 2: Ảnh đầu tiên trong list
       final mainImg = parsedImages.firstWhere(
-            (img) => img.isMain == true,
+        (img) => img.isMain == true,
         orElse: () => parsedImages.first,
       );
       finalUrl = mainImg.url;
     }
+    // ✅ LIST API (GET /products) của BE đang trả: mainImageUrl
+    else if (json['mainImageUrl'] != null &&
+        json['mainImageUrl'].toString().isNotEmpty) {
+      finalUrl = json['mainImageUrl'].toString();
+    }
     // Fallback: Nếu backend gửi field imageUrl riêng lẻ (ít dùng nhưng cứ để dự phòng)
-    else if (json['imageUrl'] != null) {
+    else if (json['imageUrl'] != null &&
+        json['imageUrl'].toString().isNotEmpty) {
       finalUrl = json['imageUrl'].toString();
     }
 
@@ -86,12 +92,16 @@ class ProductModel {
 
       // Parse Option Schema
       optionSchema: json['optionSchema'] != null
-          ? (json['optionSchema'] as List).map((e) => OptionSchema.fromJson(e)).toList()
+          ? (json['optionSchema'] as List)
+              .map((e) => OptionSchema.fromJson(e))
+              .toList()
           : [],
 
       // Parse Variants
       variants: json['variants'] != null
-          ? (json['variants'] as List).map((v) => VariantItem.fromJson(v)).toList()
+          ? (json['variants'] as List)
+              .map((v) => VariantItem.fromJson(v))
+              .toList()
           : [],
     );
   }
@@ -116,8 +126,9 @@ class ProductImage {
   factory ProductImage.fromJson(Map<String, dynamic> json) {
     return ProductImage(
       id: json['id'] ?? 0,
-      // url: json['url'] ?? '',
-      url: json['url'] ?? '',
+      // BE của bạn đang dùng field: url
+      // Để an toàn, hỗ trợ thêm key imageUrl (một số BE hay đặt vậy)
+      url: (json['url'] ?? json['imageUrl'] ?? '').toString(),
       // Lưu ý: BE trả về boolean, nhưng đôi khi là 0/1 (tinyint)
       isMain: (json['isMain'] == true || json['isMain'] == 1),
       position: int.tryParse(json['position']?.toString() ?? '0') ?? 0,
@@ -126,7 +137,7 @@ class ProductImage {
   }
 }
 
-// Giữ nguyên OptionSchema và VariantItem n
+// Giữ nguyên OptionSchema và VariantItem
 class OptionSchema {
   final String name;
   final List<String> values;
@@ -136,7 +147,8 @@ class OptionSchema {
   factory OptionSchema.fromJson(Map<String, dynamic> json) {
     return OptionSchema(
       name: json['name']?.toString() ?? '',
-      values: (json['values'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      values:
+          (json['values'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 }
@@ -185,8 +197,8 @@ class VariantItem {
         String? val = json['value$i'];
         if (val != null && val.isNotEmpty) {
           parsedOptions.add({
-            'option': 'Thuộc tính $i', // Tạm thời vì Variant Entity không lưu tên thuộc tính, chỉ lưu giá trị
-            'value': val
+            'option': 'Thuộc tính $i',
+            'value': val,
           });
         }
       }
