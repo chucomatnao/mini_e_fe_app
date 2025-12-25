@@ -55,3 +55,31 @@ class CartApi {
   static const String myCart = '/cart';
   static const String items = '/cart/items';
 }
+// ============================================================================
+// ADDRESS API
+// ============================================================================
+class AddressApi {
+  // Base endpoint: /addresses
+  static const String base = '/addresses';
+
+  // GET: Danh sách, POST: Tạo mới
+  static const String list = '/addresses';
+
+  // PATCH: Cập nhật, DELETE: Xóa
+  static String byId(int id) => '/addresses/$id';
+
+  // PATCH: Đặt làm mặc định
+  static String setDefault(int id) => '/addresses/$id/set-default';
+}
+// Oder API
+class OrderApi {
+  static const String preview = '/orders/preview'; // POST
+  static const String create = '/orders';          // POST
+  static const String mine = '/orders';            // GET List
+  static String detail(String id) => '/orders/$id'; // GET Detail
+}
+// Payment API
+class PaymentApi {
+  // Backend trả về URL để QR, nhưng trạng thái check qua Order hoặc Session
+  // Ở đây mình check status qua order detail hoặc list
+}

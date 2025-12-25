@@ -1,9 +1,12 @@
+// lib/screens/home_screen.dart
+import 'package:cached_network_image/cached_network_image.dart'; // ← THÊM DÒNG NÀY
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/cart_provider.dart';
 import '../../models/product_model.dart';
+import 'package:flutter/foundation.dart'; // cho kIsWeb (nếu dùng sau này)
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -100,37 +103,51 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Ảnh sản phẩm trong dialog - dùng CachedNetworkImage
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: product.imageUrl.isNotEmpty
-                            ? Image.network(
-                          product.imageUrl,
-                          height: 120,
+                        child: CachedNetworkImage(
+                          imageUrl: product.imageUrl.isNotEmpty
+                              ? product.imageUrl
+                              : 'https://via.placeholder.com/150',
                           width: 120,
+                          height: 120,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            height: 120,
-                            width: 120,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                           ),
-                        )
-                            : Container(height: 120, width: 120, color: Colors.grey[300]),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(product.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2),
+                            Text(
+                              product.title,
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             const SizedBox(height: 8),
-                            Text('${product.price.toInt()} VNĐ', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                            Text(
+                              '${product.price.toInt()} VNĐ',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
+                            ),
                             const SizedBox(height: 8),
                             FutureBuilder<int>(
                               future: _getRealStock(product),
                               builder: (context, snapshot) {
                                 final stock = snapshot.data ?? 0;
-                                return Text('Kho: $stock', style: const TextStyle(color: Colors.grey));
+                                return Text(
+                                  'Kho: $stock',
+                                  style: const TextStyle(color: Colors.grey),
+                                );
                               },
                             ),
                           ],
@@ -153,7 +170,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         return ChoiceChip(
                           label: Text('${v.name} ($stock)'),
                           selected: isSelected,
-                          onSelected: stock <= 0 ? null : (val) => setStateDialog(() => selectedVariantId = val ? v.id : null),
+                          onSelected: stock <= 0
+                              ? null
+                              : (val) => setStateDialog(() => selectedVariantId = val ? v.id : null),
                           selectedColor: const Color(0xFF0D6EFD),
                           labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
                           backgroundColor: Colors.grey.shade100,
@@ -169,9 +188,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       const Text('Số lượng:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                       Row(
                         children: [
-                          IconButton(onPressed: quantity <= 1 ? null : () => setStateDialog(() => quantity--), icon: const Icon(Icons.remove_circle_outline)),
+                          IconButton(
+                              onPressed: quantity <= 1 ? null : () => setStateDialog(() => quantity--),
+                              icon: const Icon(Icons.remove_circle_outline)),
                           Text('$quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          IconButton(onPressed: quantity >= maxStock ? null : () => setStateDialog(() => quantity++), icon: const Icon(Icons.add_circle_outline, color: Color(0xFF0D6EFD))),
+                          IconButton(
+                              onPressed: quantity >= maxStock ? null : () => setStateDialog(() => quantity++),
+                              icon: const Icon(Icons.add_circle_outline, color: Color(0xFF0D6EFD))),
                         ],
                       ),
                     ],
@@ -195,34 +218,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         try {
                           await Provider.of<CartProvider>(context, listen: false).addToCart(
-                              product.id,
-                              variantId: selectedVariantId,
-                              quantity: quantity
+                            product.id,
+                            variantId: selectedVariantId,
+                            quantity: quantity,
                           );
 
                           if (!mounted) return;
-
                           Navigator.pop(context);
 
                           if (isBuyNow) {
                             Navigator.pushNamed(context, '/cart');
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Đã thêm vào giỏ hàng'),
-                                  backgroundColor: Colors.green,
-                                  behavior: SnackBarBehavior.floating,
-                                )
+                              const SnackBar(
+                                content: Text('Đã thêm vào giỏ hàng'),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                              ),
                             );
                           }
                         } catch (e) {
                           if (!mounted) return;
                           String msg = e.toString().replaceAll('Exception: ', '');
                           ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(msg),
-                                backgroundColor: Colors.red,
-                              )
+                            SnackBar(content: Text(msg), backgroundColor: Colors.red),
                           );
                         }
                       },
@@ -231,7 +250,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: Text(isBuyNow ? 'MUA NGAY' : 'THÊM VÀO GIỎ', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        isBuyNow ? 'MUA NGAY' : 'THÊM VÀO GIỎ',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -289,11 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: Text(
                         '${provider.cartData!.itemsCount}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                     ),
                   )
@@ -309,7 +327,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const SizedBox(height: 10),
 
-            // BANNER
+            // BANNER (giữ nguyên)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               height: 180,
@@ -363,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            // CATEGORIES
+            // CATEGORIES (giữ nguyên)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -389,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            // PRODUCT GRID - ĐÃ FIX OVERFLOW HOÀN TOÀN
+            // PRODUCT GRID
             Consumer<ProductProvider>(
               builder: (context, productProvider, child) {
                 if (productProvider.isLoading) {
@@ -434,45 +452,39 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // PHẦN HÌNH ẢNH
+                            // PHẦN HÌNH ẢNH - DÙNG CACHEDNETWORKIMAGE
                             Expanded(
                               flex: 6,
                               child: ClipRRect(
                                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                child: SizedBox(
+                                child: CachedNetworkImage(
+                                  imageUrl: product.imageUrl.isNotEmpty
+                                      ? product.imageUrl
+                                      : 'https://via.placeholder.com/300',
+                                  fit: BoxFit.cover,
                                   width: double.infinity,
-                                  child: product.imageUrl.isNotEmpty
-                                      ? Image.network(
-                                    product.imageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (ctx, error, stackTrace) {
-                                      return Container(
-                                        color: const Color(0xFFF9F9F9),
-                                        child: const Center(
-                                          child: Icon(Icons.image_not_supported, size: 60, color: Colors.grey),
-                                        ),
-                                      );
-                                    },
-                                  )
-                                      : Container(
-                                    color: const Color(0xFFF9F9F9),
+                                  placeholder: (context, url) => Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                  ),
+                                  errorWidget: (context, url, error) => Container(
+                                    color: Colors.grey.shade200,
                                     child: const Center(
-                                      child: Icon(Icons.image, size: 60, color: Colors.grey),
+                                      child: Icon(Icons.image_not_supported, size: 60, color: Colors.grey),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
 
-                            // PHẦN THÔNG TIN DƯỚI - FIX OVERFLOW
+                            // PHẦN THÔNG TIN
                             Expanded(
                               flex: 4,
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8), // Giảm bottom padding
+                                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Tên sản phẩm
                                     Text(
                                       product.title,
                                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -480,8 +492,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: 4),
-
-                                    // Giá tiền
                                     Text(
                                       '${product.price.toInt()} VNĐ',
                                       style: const TextStyle(
@@ -491,8 +501,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-
-                                    // Tồn kho
                                     FutureBuilder<int>(
                                       future: _getRealStock(product),
                                       builder: (context, snapshot) {
@@ -506,10 +514,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         );
                                       },
                                     ),
-
-                                    const Spacer(), // Linh hoạt đẩy nút xuống dưới
-
-                                    // Nút thêm giỏ - không fixed height
+                                    const Spacer(),
                                     SizedBox(
                                       width: double.infinity,
                                       child: OutlinedButton(

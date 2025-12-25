@@ -9,6 +9,8 @@ import 'providers/user_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/shop_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/address_provider.dart'; // <--- MỚI THÊM
+import 'providers/order_provider.dart';
 
 // Services
 import 'service/api_client.dart';
@@ -16,7 +18,7 @@ import 'service/shop_service.dart';
 
 // Models
 import 'models/shop_model.dart';
-import 'models/product_model.dart'; // ← THÊM: CHO PRODUCT DETAIL
+import 'models/product_model.dart';
 import 'models/cart_model.dart';
 
 // Screens
@@ -38,8 +40,13 @@ import 'screens/shops/shop_list_screen.dart';
 import 'screens/shops/shop_detail_screen.dart';
 import 'screens/products/product_detail_screen.dart';
 import 'screens/products/add_product_screen.dart';
-import 'screens/products//add_variant_screen.dart'; // (Tùy chọn)
+import 'screens/products//add_variant_screen.dart';
 import 'screens/carts/cart_screen.dart';
+import 'screens/address/address_list_screen.dart';
+import 'screens/oders_payments/checkout_screen.dart';
+import 'screens/oders_payments/my_orders_screen.dart';
+import 'screens/oders_payments/payment_qr_screen.dart';
+import 'screens/oders_payments/payment_result_screen.dart';
 
 
 void main() async {
@@ -56,6 +63,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ShopProvider(service: ShopService())),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => AddressProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
       ],
       child: const MyApp(),
     ),
@@ -67,7 +76,6 @@ void main() async {
 
     final context = AuthProvider.navigatorKey.currentContext;
     if (context != null) {
-      // ĐÃ SỬA: Dùng fetchPublicProducts() thay vì fetchProducts()
       Provider.of<ProductProvider>(context, listen: false)
           .fetchPublicProducts();
     }
@@ -126,13 +134,12 @@ class MyApp extends StatelessWidget {
           return const HomeScreen();
         },
 
-        // === PRODUCT DETAIL - ĐÃ SỬA AN TOÀN ===
+        // === PRODUCT DETAIL ===
         '/product-detail': (context) {
           final args = ModalRoute.of(context)!.settings.arguments;
           if (args is ProductModel) {
             return ProductDetailScreen(product: args);
           } else {
-            // Không có sản phẩm → hiển thị thông báo lỗi hoặc quay về home
             return Scaffold(
               appBar: AppBar(title: const Text('Lỗi')),
               body: const Center(
@@ -153,12 +160,35 @@ class MyApp extends StatelessWidget {
           if (args is Map<String, dynamic> && args['productId'] is int) {
             return AddVariantScreen(productId: args['productId'] as int);
           }
-          // Sai định dạng → quay về home
           return const HomeScreen();
         },
 
         // === CART ===
         '/cart': (context) => const CartScreen(),
+
+        '/checkout': (context) => const CheckoutScreen(),
+
+        '/payment-gateway': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return PaymentQrScreen(
+            qrData: args['qrData'],
+            amount: args['amount'],
+            sessionCode: args['sessionCode'],
+            orderIdToCheck: args['orderIdToCheck'], // <--- Mới thêm
+          );
+        },
+
+        '/payment-result': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return PaymentResultScreen(
+            success: args['success'],
+            message: args['message'],
+            orderId: args['orderId'],
+          );
+        },
+
+        '/orders': (context) => const MyOrdersScreen(),
+
       },
     );
   }

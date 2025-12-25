@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
-
+import './address/address_list_screen.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
@@ -139,11 +139,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'Trang chủ',
                     onTap: () => Navigator.pushReplacementNamed(context, '/home'),
                   ),
+
                   _menuTile(
                     context,
                     icon: Icons.person_outline,
                     title: 'Thông tin cá nhân',
                     onTap: () => Navigator.pushNamed(context, '/personal-info'),
+                  ),
+                  _menuTile(
+                    context,
+                    icon: Icons.store_mall_directory_outlined,
+                    title: 'Quản lý shop',
+                    onTap: () => Navigator.pushNamed(context, '/shop-management'),
+                  ),
+                  _menuTile(
+                    context,
+                    icon: Icons.shopping_bag_outlined,
+                    title: 'Đơn mua',
+                    onTap: () {
+                      // Chuyển sang màn hình MyOrdersScreen
+                      Navigator.pushNamed(context, '/orders');
+                    },
                   ),
                   _menuTile(
                     context,
@@ -155,7 +171,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     context,
                     icon: Icons.location_on_outlined,
                     title: 'Địa chỉ',
-                    onTap: () => _showSnackBar(context, 'Chức năng Địa chỉ sắp có!'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AddressListScreen()),
+                      );
+                    },
                   ),
                   _menuTile(
                     context,
@@ -169,18 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'Cài đặt thông báo',
                     onTap: () => _showSnackBar(context, 'Chức năng Cài đặt thông báo sắp có!'),
                   ),
-                  _menuTile(
-                    context,
-                    icon: Icons.shopping_bag_outlined,
-                    title: 'Đơn mua',
-                    onTap: () => _showSnackBar(context, 'Chức năng Đơn mua sắp có!'),
-                  ),
-                  _menuTile(
-                    context,
-                    icon: Icons.store_mall_directory_outlined,
-                    title: 'Quản lý shop',
-                    onTap: () => Navigator.pushNamed(context, '/shop-management'),
-                  ),
+
 
                   const SizedBox(height: 16),
 
