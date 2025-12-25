@@ -30,6 +30,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+#  http: ^1.2.0            # Để gọi API esgoo.net & nominatim
+  flutter_map: ^6.1.0       # Thay thế Google Maps (hiển thị OpenStreetMap)
+  latlong2: ^0.9.0          # Xử lý tọa độ
   http: ^1.2.2              # Gọi API
   provider: ^6.1.2          # State management
   shared_preferences: ^2.3.2 # Lưu token
