@@ -117,4 +117,22 @@ class CartService {
       throw Exception('Lỗi xóa sản phẩm');
     }
   }
+  // Xóa sạch giỏ hàng (Clear Cart)
+  Future<CartData?> clearCart() async {
+    // Gọi vào endpoint DELETE /cart
+    final url = Uri.parse(_getUrl('/cart'));
+    final headers = await _getHeaders();
+
+    final response = await http.delete(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      final res = CartResponse.fromJson(jsonDecode(response.body));
+      return res.data;
+    } else if (response.statusCode == 401) {
+      throw Exception('Unauthorized');
+    } else {
+      throw Exception('Lỗi làm sạch giỏ hàng');
+    }
+  }
+
 }
