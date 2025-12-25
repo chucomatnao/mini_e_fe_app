@@ -128,8 +128,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           price: price,
           description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
           slug: _slugController.text.trim().isNotEmpty ? _slugController.text.trim() : null,
-          images: kIsWeb ? null : (_images.isNotEmpty ? _images : null),           // Mobile: gửi List<File>
-          imageBytes: kIsWeb ? (_imageBytes.isNotEmpty ? _imageBytes : null) : null, // Web: gửi List<Uint8List>
+          images: kIsWeb ? _imageBytes : _images, // Gửi đúng vào 'images' (List<dynamic>)
         );
 
         if (newProduct != null && mounted) {

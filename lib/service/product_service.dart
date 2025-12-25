@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import '../service/api_client.dart'; // Đảm bảo đường dẫn đúng tới file api_client.dart bạn mới tạo
 import '../utils/app_constants.dart';
 import '../models/product_model.dart';
+import 'package:flutter/foundation.dart'; // cho kIsWeb
+import 'package:http_parser/http_parser.dart';
 
 class ProductService {
   final ApiClient _api;
@@ -70,50 +72,70 @@ class ProductService {
     double? compareAtPrice,
     required int stock,
     String status = 'DRAFT',
-    List<File>? images, // Thay List<String> imageUrls thành List<File>
-    Map<String, dynamic>? optionSchema,
+    List<dynamic>? images, // Có thể là List<File> (mobile), List<Uint8List> (web), hoặc List<String> URLs (fallback)
   }) async {
     try {
-      final formData = FormData();
+      final formData = FormData.fromMap({
+        'shopId': shopId,
+        'title': title,
+        if (slug.isNotEmpty) 'slug': slug,
+        if (description != null && description.isNotEmpty) 'description': description,
+        'price': price,
+        if (compareAtPrice != null) 'compareAtPrice': compareAtPrice,
+        'stock': stock,
+        'status': status,
+      });
 
-      // Thêm các trường text
-      formData.fields.addAll([
-        MapEntry('shopId', shopId.toString()),
-        MapEntry('title', title),
-        MapEntry('slug', slug),
-        MapEntry('price', price.toString()),
-        MapEntry('stock', stock.toString()),
-        MapEntry('status', status),
-      ]);
-
-      if (description != null) formData.fields.add(MapEntry('description', description));
-      if (compareAtPrice != null) formData.fields.add(MapEntry('compareAtPrice', compareAtPrice.toString()));
-
-      // Xử lý optionSchema (nếu backend nhận JSON string)
-      // Nếu backend nhận object lồng nhau trong FormData thì cần cách xử lý khác,
-      // nhưng thường gửi dạng chuỗi JSON là an toàn nhất với FormData.
-      // Tuy nhiên, nếu API generateVariants làm việc riêng thì chỗ này có thể bỏ qua optionSchema
-      // tùy thuộc vào logic backend của bạn.
-
-      // Xử lý Ảnh (Multiple Files)
+      // Xử lý ảnh upload (File hoặc Uint8List)
       if (images != null && images.isNotEmpty) {
-        for (var file in images) {
-          String fileName = file.path.split('/').last;
-          formData.files.add(MapEntry(
-            'images', // Key này phải khớp với upload middleware của backend (vd: upload.array('images'))
-            await MultipartFile.fromFile(file.path, filename: fileName),
-          ));
+        // Kiểm tra loại đầu tiên để xác định kiểu danh sách
+        final firstItem = images.first;
+
+        if (firstItem is File || firstItem is Uint8List) {
+          for (int i = 0; i < images.length; i++) {
+            final item = images[i];
+            MultipartFile multipartFile;
+
+            if (kIsWeb && item is Uint8List) {
+              // Web: từ Uint8List
+              multipartFile = MultipartFile.fromBytes(
+                item,
+                filename: 'image_$i.jpg', // Cloudinary cần filename có extension
+                contentType: MediaType('image', 'jpeg'),
+              );
+            } else if (!kIsWeb && item is File) {
+              // Mobile: từ File
+              multipartFile = await MultipartFile.fromFile(
+                item.path,
+                filename: item.path.split('/').last, // Giữ nguyên tên file gốc
+              );
+            } else {
+              throw Exception('Loại ảnh không hỗ trợ');
+            }
+
+            // Key phải là images[0], images[1]... để NestJS nhận đúng mảng
+            formData.files.add(MapEntry('images', multipartFile));
+          }
+        }
+        // Trường hợp hiếm: truyền trực tiếp List<String> URLs (fallback từ DTO cũ)
+        else if (firstItem is String) {
+          for (int i = 0; i < images.length; i++) {
+            formData.fields.add(MapEntry('images[$i]', images[i] as String));
+          }
         }
       }
 
       final response = await _api.post(
         ProductApi.products,
         data: formData,
-        options: Options(contentType: 'multipart/form-data'),
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
       );
 
       return ProductModel.fromJson(response.data['data']);
     } catch (e) {
+      print('Lỗi tạo sản phẩm: $e');
       throw Exception('Tạo sản phẩm thất bại: $e');
     }
   }

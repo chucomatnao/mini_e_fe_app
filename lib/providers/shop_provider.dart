@@ -29,13 +29,11 @@ class ShopProvider with ChangeNotifier {
       _error = null;
     } catch (e) {
       final message = e.toString();
-
-      // PHÂN BIỆT: 404 → "Chưa có shop" (KHÔNG PHẢI LỖI)
       if (message.contains('404') || message.contains('Bạn chưa có shop')) {
         _shop = null;
-        _error = null; // XÓA error → vào _buildNoShop
+        _error = null;
       } else {
-        _error = message; // Lỗi thật
+        _error = message;
       }
     } finally {
       _setLoading(false);
@@ -119,6 +117,14 @@ class ShopProvider with ChangeNotifier {
   // ==================== CLEAR ====================
   void clearShops() {
     _shops = [];
+    notifyListeners();
+  }
+
+
+  void clearShopData() {
+    _shop = null;      // Xóa shop hiện tại
+    _shops = [];       // Xóa danh sách tìm kiếm
+    _error = null;
     notifyListeners();
   }
 

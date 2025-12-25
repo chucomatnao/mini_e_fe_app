@@ -9,12 +9,15 @@ class ShopModel {
   final String? coverUrl;
   final String? phone;
   final String? email;
+  final String? shopAddress;
   final String status; // PENDING, ACTIVE, SUSPENDED
   final DateTime? verifiedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   final ShopStatsModel stats;
-  final List<dynamic>? products; // nếu cần
+  final List<dynamic>? products;
+  final double? shopLat;
+  final double? shopLng;
 
   ShopModel({
     required this.id,
@@ -26,12 +29,15 @@ class ShopModel {
     this.coverUrl,
     this.phone,
     this.email,
+    this.shopAddress,
     required this.status,
     this.verifiedAt,
     required this.createdAt,
     required this.updatedAt,
     required this.stats,
     this.products,
+    this.shopLat,
+    this.shopLng,
   });
 
   factory ShopModel.fromJson(Map<String, dynamic> json) {
@@ -45,12 +51,15 @@ class ShopModel {
       coverUrl: json['coverUrl'],
       phone: json['phone'],
       email: json['email'],
+      shopAddress: json['shopAddress'],
       status: json['status'] as String,
       verifiedAt: json['verifiedAt'] != null ? DateTime.parse(json['verifiedAt']) : null,
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
       stats: ShopStatsModel.fromJson(json['stats'] ?? {}),
       products: json['products'],
+      shopLat: json['shopLat'] != null ? double.tryParse(json['shopLat'].toString()) : null,
+      shopLng: json['shopLng'] != null ? double.tryParse(json['shopLng'].toString()) : null,
     );
   }
 }

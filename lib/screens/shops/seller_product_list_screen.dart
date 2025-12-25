@@ -22,12 +22,20 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
   @override
   void initState() {
     super.initState();
+    // Sử dụng addPostFrameCallback để thực hiện logic sau khi Widget được dựng
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProductProvider>().fetchAllProductsForSeller();
+      final provider = context.read<ProductProvider>();
+
+      // --- CẬP NHẬT QUAN TRỌNG ---
+      // 1. Xóa bộ nhớ đệm cũ ngay lập tức để không hiện sản phẩm của shop trước
+      provider.clearProductsCache();
+
+      // 2. Sau đó mới gọi API tải danh sách sản phẩm của shop hiện tại
+      provider.fetchAllProductsForSeller();
     });
   }
 
-  // Hàm tính tổng tồn kho thực tế
+  // Hàm tính tổng tồn kho thực tế (bao gồm cả biến thể)
   int _calculateTotalStock(ProductModel product) {
     // Nếu có variants → tính tổng stock từ các variant
     if (product.variants != null && product.variants!.isNotEmpty) {
@@ -37,7 +45,7 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
     return product.stock ?? 0;
   }
 
-  // Hàm chuyển trạng thái sản phẩm
+  // Hàm chuyển trạng thái sản phẩm (Active <-> Draft)
   Future<void> _toggleStatus(BuildContext context, ProductModel product) async {
     final provider = context.read<ProductProvider>();
     final success = await provider.toggleProductStatus(product.id);
@@ -50,7 +58,44 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
           backgroundColor: newStatus == 'ACTIVE' ? Colors.green : Colors.orange,
         ),
       );
+      // Tải lại danh sách để cập nhật giao diện
       provider.fetchAllProductsForSeller();
+    }
+  }
+
+  // Hàm xác nhận xóa sản phẩm
+  void _confirmDeleteProduct(BuildContext context, int productId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xóa sản phẩm?'),
+        content: const Text('Sản phẩm này sẽ bị xóa vĩnh viễn.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hủy')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Xóa', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      // Gọi API xóa từ Provider
+      final success = await context.read<ProductProvider>().deleteProduct(productId);
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa sản phẩm.')),
+        );
+        // Refresh danh sách sau khi xóa
+        context.read<ProductProvider>().fetchAllProductsForSeller();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Xóa thất bại. Vui lòng thử lại.')),
+        );
+      }
     }
   }
 
@@ -139,6 +184,7 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
 
     return InkWell(
       onTap: () {
+        // Chuyển sang màn hình chi tiết (đảm bảo route '/product-detail' đã được định nghĩa)
         Navigator.pushNamed(
           context,
           '/product-detail',
@@ -199,7 +245,7 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                       Icon(Icons.inventory, size: 14, color: Colors.grey[600]),
                       const SizedBox(width: 4),
                       Text(
-                        'Kho: $totalStock', // ← ĐÃ SỬA: Hiển thị tổng stock thực tế
+                        'Kho: $totalStock',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                       const SizedBox(width: 12),
@@ -225,7 +271,7 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Nút chuyển trạng thái
+                // Nút chuyển trạng thái nhanh
                 IconButton(
                   icon: Icon(
                     product.status == 'ACTIVE' ? Icons.visibility : Icons.visibility_off,
@@ -235,7 +281,7 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                   onPressed: () => _toggleStatus(context, product),
                 ),
 
-                // Menu cũ
+                // Menu mở rộng (Sửa/Xóa)
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, color: Colors.grey),
                   onSelected: (value) async {
@@ -246,6 +292,7 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                           builder: (_) => EditProductScreen(product: product),
                         ),
                       );
+                      // Refresh lại danh sách sau khi quay về từ màn hình sửa
                       if (context.mounted) {
                         context.read<ProductProvider>().fetchAllProductsForSeller();
                       }
@@ -280,30 +327,5 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
         ),
       ),
     );
-  }
-
-  void _confirmDeleteProduct(BuildContext context, int productId) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xóa sản phẩm?'),
-        content: const Text('Sản phẩm này sẽ bị xóa vĩnh viễn.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Hủy')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Xóa', style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
-
-    if (confirm == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã gửi yêu cầu xóa.')),
-      );
-      context.read<ProductProvider>().fetchAllProductsForSeller();
-    }
   }
 }

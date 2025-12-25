@@ -1,4 +1,5 @@
 // lib/screens/products/product_detail_screen.dart
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -163,8 +164,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
             if (_currentProduct.optionSchema != null && _currentProduct.optionSchema!.isNotEmpty) {
               isFullSelection = _currentProduct.optionSchema!.every(
-                      (opt) => selectedOptions.containsKey(opt.name)
-              );
+                      (opt) => selectedOptions.containsKey(opt.name));
             } else {
               isFullSelection = true;
             }
@@ -174,10 +174,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 return selectedOptions[opt.name];
               }).join(' - ');
               try {
-                foundVariant = _variants.firstWhere(
-                      (v) => v.name == expectedName,
-                  orElse: () => _variants[0],
-                );
+                foundVariant = _variants.firstWhere((v) => v.name == expectedName);
               } catch (_) {}
             }
 
@@ -186,6 +183,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ? _formatPrice(foundVariant.price)
                 : _formatPrice(_currentProduct.price);
             String? variantNameDisplay = foundVariant?.name;
+
+            // ← MỚI: Ảnh hiển thị - ưu tiên ảnh variant nếu có
+            String bottomSheetImageUrl = _currentProduct.imageUrl;
+            if (foundVariant?.imageId != null && _currentProduct.images.isNotEmpty) {
+              final variantImg = _currentProduct.images.firstWhere(
+                    (img) => img.id == foundVariant!.imageId,
+                orElse: () => _currentProduct.images[0],
+              );
+              bottomSheetImageUrl = variantImg.url;
+            } else if (_currentProduct.images.isNotEmpty) {
+              final mainImg = _currentProduct.images.firstWhere(
+                    (img) => img.isMain,
+                orElse: () => _currentProduct.images[0],
+              );
+              bottomSheetImageUrl = mainImg.url;
+            }
 
             return Container(
               decoration: const BoxDecoration(
@@ -208,15 +221,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          _currentProduct.imageUrl,
-                          width: 100, height: 100, fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 100, height: 100, color: Colors.grey.shade200,
-                              child: const Icon(Icons.image_not_supported, color: Colors.grey),
-                            );
-                          },
+                        child: CachedNetworkImage(
+                          imageUrl: bottomSheetImageUrl.isNotEmpty ? bottomSheetImageUrl : 'https://via.placeholder.com/150',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -409,13 +426,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final canManage = _canManageProduct();
 
-    // Lấy danh sách ảnh đầy đủ từ product.images (backend trả về mảng)
-    final List<String> imageUrls = [];
-    if (_currentProduct.images != null && _currentProduct.images!.isNotEmpty) {
-      imageUrls.addAll(_currentProduct.images!.map((img) => img.url));
-    } else if (_currentProduct.imageUrl.isNotEmpty) {
-      imageUrls.add(_currentProduct.imageUrl);
-    }
+    // Danh sách ảnh đầy đủ (ưu tiên images array từ backend)
+    final List<ProductImage> images = _currentProduct.images.isNotEmpty
+        ? _currentProduct.images
+        : [
+      _currentProduct.imageUrl.isNotEmpty
+          ? ProductImage(id: 0, url: _currentProduct.imageUrl, isMain: true) // Đã xóa position: 0
+          : ProductImage(id: 0, url: 'https://via.placeholder.com/300', isMain: true) // Đã xóa position: 0
+    ];
 
     return Scaffold(
       backgroundColor: _bgColor,
@@ -475,35 +493,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // === PHẦN HÌNH ẢNH - ĐÃ SỬA THÀNH CAROUSEL ===
+                  // Carousel ảnh (giữ nguyên)
                   SizedBox(
-                    height: MediaQuery.of(context).size.width,
-                    width: double.infinity,
+                    height: MediaQuery.of(context).size.width + 60, // thêm chỗ cho thumbnail
                     child: Stack(
-                      alignment: Alignment.bottomCenter,
                       children: [
                         PageView.builder(
-                          itemCount: imageUrls.isNotEmpty ? imageUrls.length : 1,
+                          itemCount: images.length,
                           onPageChanged: (idx) => setState(() => _currentImageIndex = idx),
                           itemBuilder: (ctx, index) {
-                            final url = imageUrls.isNotEmpty ? imageUrls[index] : _currentProduct.imageUrl;
-                            return Image.network(
-                              url,
+                            return CachedNetworkImage(
+                              imageUrl: images[index].url,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              width: double.infinity,
+                              placeholder: (context, url) => Container(
                                 color: Colors.grey.shade200,
-                                child: const Center(child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey)),
+                                child: const Center(child: CircularProgressIndicator()),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey.shade200,
+                                child: const Center(child: Icon(Icons.image_not_supported, size: 80, color: Colors.grey)),
                               ),
                             );
                           },
                         ),
-                        // Dot Indicator
-                        if (imageUrls.length > 1)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+
+                        // Dot indicator
+                        if (images.length > 1)
+                          Positioned(
+                            bottom: 70,
+                            left: 0,
+                            right: 0,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(imageUrls.length, (index) => Container(
+                              children: List.generate(images.length, (index) => Container(
                                 margin: const EdgeInsets.symmetric(horizontal: 4),
                                 width: _currentImageIndex == index ? 20 : 8,
                                 height: 8,
@@ -513,7 +536,46 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                               )),
                             ),
-                          )
+                          ),
+
+                        // Thumbnail list nhỏ dưới carousel
+                        if (images.length > 1)
+                          Positioned(
+                            bottom: 8,
+                            left: 16,
+                            right: 16,
+                            child: SizedBox(
+                              height: 60,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: images.length,
+                                itemBuilder: (context, index) {
+                                  final isSelected = _currentImageIndex == index;
+                                  return GestureDetector(
+                                    onTap: () => setState(() => _currentImageIndex = index),
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: isSelected ? _primaryColor : Colors.transparent, width: 2),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: CachedNetworkImage(
+                                          imageUrl: images[index].url,
+                                          fit: BoxFit.cover,
+                                          placeholder: (_, __) => Container(color: Colors.grey.shade200),
+                                          errorWidget: (_, __, ___) => Container(color: Colors.grey.shade200),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),

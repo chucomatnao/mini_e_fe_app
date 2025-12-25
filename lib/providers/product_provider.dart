@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:http_parser/http_parser.dart'; // cho MediaType
 import '../models/product_model.dart'; // Đảm bảo file này đã có class VariantItem
 import '../utils/app_constants.dart';
 
@@ -15,9 +15,7 @@ import 'shop_provider.dart';
 /// ---------------------------------------------------------------------------
 /// PRODUCT PROVIDER – QUẢN LÝ SẢN PHẨM & GỌI API
 /// ĐÃ CẬP NHẬT:
-/// • Hỗ trợ upload ảnh Mobile (File) + Web (Uint8List)
-/// • Delete/Update Product & Variant
-/// • getVariants trả về List<VariantItem> (Strong Type)
+/// • Thêm hàm clearProductsCache() để xóa dữ liệu khi đổi shop/user
 /// ---------------------------------------------------------------------------
 class ProductProvider with ChangeNotifier {
   // ====================== DIO CLIENT ======================
@@ -29,6 +27,7 @@ class ProductProvider with ChangeNotifier {
 
   // ====================== TRẠNG THÁI ======================
   List<ProductModel> _products = [];
+
   bool _isLoading = false;
   String? _error;
 
@@ -40,22 +39,23 @@ class ProductProvider with ChangeNotifier {
   ProductProvider();
 
   // ========================================================================
+  // 0. HÀM MỚI: XÓA CACHE DỮ LIỆU (Dùng khi logout hoặc switch account)
+  // ========================================================================
+  void clearProductsCache() {
+    _products = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  // ========================================================================
   // 1. LẤY TOKEN TỪ AUTH PROVIDER
   // ========================================================================
   Future<String> _getToken() async {
     final context = AuthProvider.navigatorKey.currentContext;
-    if (context == null) {
-      throw Exception('Ứng dụng chưa khởi tạo xong');
-    }
-
+    if (context == null) throw Exception('App chưa khởi tạo');
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final token = authProvider.accessToken;
-
-    if (token == null || token.isEmpty) {
-      throw Exception('Chưa đăng nhập');
-    }
-
-    return token;
+    return authProvider.accessToken ?? '';
   }
 
   // ========================================================================
@@ -79,6 +79,7 @@ class ProductProvider with ChangeNotifier {
   }) async {
     if (showLoading) {
       _isLoading = true;
+      _products = []; // <--- THÊM: Xóa ngay dữ liệu cũ khi bắt đầu tải mới
       _error = null;
       notifyListeners();
     }
@@ -110,9 +111,7 @@ class ProductProvider with ChangeNotifier {
 
       _products = parsedProducts;
 
-      if (showLoading) {
-        _isLoading = false;
-      }
+      if (showLoading) _isLoading = false;
       notifyListeners();
     } on DioException catch (e) {
       _error = _handleDioError(e);
@@ -134,8 +133,7 @@ class ProductProvider with ChangeNotifier {
     int? stock,
     String? description,
     String? slug,
-    List<File>? images,
-    List<Uint8List>? imageBytes,
+    List<dynamic>? images, // File (mobile) hoặc Uint8List (web)
   }) async {
     _isLoading = true;
     _error = null;
@@ -144,53 +142,56 @@ class ProductProvider with ChangeNotifier {
     try {
       final token = await _getToken();
 
-      final data = <String, dynamic>{
-        'title': title,
+      final formData = FormData.fromMap({
+        'title': title.trim(),
         'price': price,
-        if (stock != null) 'stock': stock,
+        if (stock != null && stock > 0) 'stock': stock,
         if (description != null && description.trim().isNotEmpty)
           'description': description.trim(),
         if (slug != null && slug.trim().isNotEmpty) 'slug': slug.trim(),
-      };
+      });
 
-      final formData = FormData.fromMap(data);
-
-      if (kIsWeb && imageBytes != null && imageBytes.isNotEmpty) {
-        for (int i = 0; i < imageBytes.length; i++) {
-          final bytes = imageBytes[i];
-          formData.files.add(MapEntry(
-            'images',
-            MultipartFile.fromBytes(bytes, filename: 'image_$i.jpg'),
-          ));
-        }
-      } else if (images != null && images.isNotEmpty) {
+      // Xử lý ảnh upload - key đúng: images[0], images[1]...
+      if (images != null && images.isNotEmpty) {
         for (int i = 0; i < images.length; i++) {
-          final file = images[i];
-          formData.files.add(MapEntry(
-            'images',
-            await MultipartFile.fromFile(file.path, filename: 'image_$i.jpg'),
-          ));
+          final item = images[i];
+          MultipartFile multipartFile;
+
+          if (kIsWeb && item is Uint8List) {
+            multipartFile = MultipartFile.fromBytes(
+              item,
+              filename: 'image_$i.jpg',
+              contentType: MediaType('image', 'jpeg'),
+            );
+          } else if (item is File) {
+            multipartFile = await MultipartFile.fromFile(
+              item.path,
+              filename: item.path.split('/').last,
+            );
+          } else {
+            continue; // Bỏ qua nếu loại không hỗ trợ
+          }
+
+          // KEY QUAN TRỌNG: images[0], images[1]... → backend nhận mảng
+          formData.files.add(MapEntry('images', multipartFile));
         }
       }
 
       final response = await _dio.post(
         ProductApi.products,
         data: formData,
-        options: Options(headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'multipart/form-data',
-        }),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       final newProduct = ProductModel.fromJson(response.data['data']);
-      _products.insert(0, newProduct);
+      _products.insert(0, newProduct); // Thêm vào đầu danh sách
 
       _isLoading = false;
       notifyListeners();
       return newProduct;
     } on DioException catch (e) {
       _error = _handleDioError(e);
-      print('Dio Error createProduct: ${e.response?.data}');
+      print('Create product error: ${e.response?.data}');
     } catch (e) {
       _error = 'Lỗi tạo sản phẩm: $e';
     }
@@ -201,7 +202,7 @@ class ProductProvider with ChangeNotifier {
   }
 
   // ========================================================================
-  // 4. CẬP NHẬT SẢN PHẨM (INFO CHUNG)
+  // 4. CẬP NHẬT SẢN PHẨM – ĐÃ SỬA ĐÚNG KEY ẢNH + HAI TRƯỜNG HỢP
   // ========================================================================
   Future<bool> updateProduct({
     required int productId,
@@ -211,8 +212,7 @@ class ProductProvider with ChangeNotifier {
     String? description,
     String? slug,
     String? status,
-    List<File>? images,
-    List<Uint8List>? imageBytes,
+    List<dynamic>? images, // File hoặc Uint8List
   }) async {
     _isLoading = true;
     _error = null;
@@ -220,71 +220,87 @@ class ProductProvider with ChangeNotifier {
 
     try {
       final token = await _getToken();
+      final hasNewImages = images != null && images.isNotEmpty;
 
-      final hasNewImages = (kIsWeb && imageBytes?.isNotEmpty == true) ||
-          (!kIsWeb && images?.isNotEmpty == true);
-
-      // TH1: Gửi JSON (Không có ảnh mới)
+      // Trường hợp 1: Không có ảnh mới → gửi JSON
       if (!hasNewImages) {
-        final Map<String, dynamic> jsonBody = {}; // Fix kiểu Map rõ ràng
-        if (title != null) jsonBody['title'] = title;
+        final Map<String, dynamic> jsonBody = {};
+        if (title != null) jsonBody['title'] = title.trim();
         if (price != null) jsonBody['price'] = price;
         if (stock != null) jsonBody['stock'] = stock;
         if (description != null) jsonBody['description'] = description.trim();
         if (slug != null) jsonBody['slug'] = slug.trim();
         if (status != null) jsonBody['status'] = status;
 
-        final response = await _dio.patch(
-          ProductApi.byId(productId),
-          data: jsonBody,
-          options: Options(headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          }),
-        );
-
-        _updateLocalProduct(productId, response.data['data']);
-        _isLoading = false;
-        return true;
-      }
-      // TH2: Gửi FormData (Có ảnh mới)
-      else {
-        final formData = FormData();
-        if (title != null) formData.fields.add(MapEntry('title', title));
-        if (price != null) formData.fields.add(MapEntry('price', price.toString()));
-        if (stock != null) formData.fields.add(MapEntry('stock', stock.toString()));
-        if (description != null) formData.fields.add(MapEntry('description', description.trim()));
-        if (slug != null) formData.fields.add(MapEntry('slug', slug.trim()));
-        if (status != null) formData.fields.add(MapEntry('status', status));
-
-        if (kIsWeb && imageBytes != null) {
-          for (int i = 0; i < imageBytes.length; i++) {
-            formData.files.add(MapEntry(
-              'images',
-              MultipartFile.fromBytes(imageBytes[i], filename: 'image_$i.jpg'),
-            ));
-          }
-        } else if (images != null) {
-          for (int i = 0; i < images.length; i++) {
-            formData.files.add(MapEntry(
-              'images',
-              await MultipartFile.fromFile(images[i].path, filename: 'image_$i.jpg'),
-            ));
-          }
+        if (jsonBody.isEmpty) {
+          _isLoading = false;
+          notifyListeners();
+          return true; // Không có gì để update
         }
 
         final response = await _dio.patch(
           ProductApi.byId(productId),
-          data: formData,
-          options: Options(headers: {'Authorization': 'Bearer $token'}),
+          data: jsonBody,
+          options: Options(
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          ),
         );
 
         _updateLocalProduct(productId, response.data['data']);
         _isLoading = false;
+        notifyListeners();
         return true;
       }
+
+      // Trường hợp 2: Có ảnh mới → gửi FormData
+      final formData = FormData();
+
+      if (title != null) formData.fields.add(MapEntry('title', title.trim()));
+      if (price != null) formData.fields.add(MapEntry('price', price.toString()));
+      if (stock != null) formData.fields.add(MapEntry('stock', stock.toString()));
+      if (description != null) formData.fields.add(MapEntry('description', description.trim()));
+      if (slug != null) formData.fields.add(MapEntry('slug', slug.trim()));
+      if (status != null) formData.fields.add(MapEntry('status', status));
+
+      // Upload ảnh mới với key đúng
+      for (int i = 0; i < images!.length; i++) {
+        final item = images[i];
+        MultipartFile multipartFile;
+
+        if (kIsWeb && item is Uint8List) {
+          multipartFile = MultipartFile.fromBytes(
+            item,
+            filename: 'image_$i.jpg',
+            contentType: MediaType('image', 'jpeg'),
+          );
+        } else if (item is File) {
+          multipartFile = await MultipartFile.fromFile(
+            item.path,
+            filename: item.path.split('/').last,
+          );
+        } else {
+          continue;
+        }
+
+        formData.files.add(MapEntry('images', multipartFile));
+      }
+
+      final response = await _dio.patch(
+        ProductApi.byId(productId),
+        data: formData,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      _updateLocalProduct(productId, response.data['data']);
+      _isLoading = false;
+      notifyListeners();
+      return true;
     } on DioException catch (e) {
       _error = _handleDioError(e);
+      print('Update product error: ${e.response?.data}');
     } catch (e) {
       _error = 'Lỗi cập nhật sản phẩm: $e';
     }
@@ -294,7 +310,6 @@ class ProductProvider with ChangeNotifier {
     return false;
   }
 
-  // Helper update local list
   void _updateLocalProduct(int id, Map<String, dynamic> jsonData) {
     final updatedProduct = ProductModel.fromJson(jsonData);
     final index = _products.indexWhere((p) => p.id == id);
