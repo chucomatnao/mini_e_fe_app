@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 
 import '../providers/product_provider.dart';
 import '../providers/cart_provider.dart';
-import '../../models/product_model.dart';
+import '../providers/category_provider.dart';
+import '../models/product_model.dart';
+import '../models/category_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -18,11 +20,18 @@ class _HomeScreenState extends State<HomeScreen> {
   final Map<int, int> _stockCache = {};
   final TextEditingController _searchCtrl = TextEditingController();
 
+  int? _selectedRootId;
+  int? _selectedCategoryId;
+  String _keyword = '';
+
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
+      Provider.of<CartProvider>(context, listen: false).fetchCart();
+      Provider.of<CategoryProvider>(context, listen: false).fetchTree(); // ✅
     });
   }
 
@@ -30,6 +39,91 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  // ✅ LẤY categoryId từ ProductModel (an toàn theo dynamic — tránh lệch field)
+  int? _tryGetCategoryId(ProductModel product) {
+    try {
+      final d = product as dynamic;
+
+      final v1 = d.categoryId;
+      if (v1 is int) return v1;
+      if (v1 is num) return v1.toInt();
+
+      final v2 = d.category_id;
+      if (v2 is int) return v2;
+      if (v2 is num) return v2.toInt();
+
+      final v3 = d.category?.id;
+      if (v3 is int) return v3;
+      if (v3 is num) return v3.toInt();
+
+      // nếu có toJson()
+      try {
+        final m = d.toJson();
+        if (m is Map) {
+          final v = m['categoryId'] ?? m['category_id'];
+          if (v is int) return v;
+          if (v is num) return v.toInt();
+          if (m['category'] is Map) {
+            final vv = (m['category'] as Map)['id'];
+            if (vv is int) return vv;
+            if (vv is num) return vv.toInt();
+          }
+        }
+      } catch (_) {}
+
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  CategoryModel? _findNodeById(List<CategoryModel> nodes, int id) {
+    for (final n in nodes) {
+      if (n.id == id) return n;
+      final child = _findNodeById(n.children, id);
+      if (child != null) return child;
+    }
+    return null;
+  }
+
+  List<int> _collectSubtreeIds(List<CategoryModel> tree, int rootId) {
+    final node = _findNodeById(tree, rootId);
+    if (node == null) return [rootId];
+
+    final ids = <int>[];
+    void dfs(CategoryModel n) {
+      ids.add(n.id);
+      for (final c in n.children) dfs(c);
+    }
+
+    dfs(node);
+    return ids;
+  }
+
+  List<ProductModel> _applyFilters(List<ProductModel> products, List<CategoryModel> tree) {
+    List<int>? allowedCategoryIds;
+    if (_selectedCategoryId != null) {
+      allowedCategoryIds = _collectSubtreeIds(tree, _selectedCategoryId!);
+    }
+
+    return products.where((p) {
+      // filter category
+      if (allowedCategoryIds != null) {
+        final catId = _tryGetCategoryId(p);
+        if (catId == null) return false;
+        if (!allowedCategoryIds.contains(catId)) return false;
+      }
+
+      // filter keyword
+      if (_keyword.trim().isNotEmpty) {
+        final kw = _keyword.trim().toLowerCase();
+        if (!p.title.toLowerCase().contains(kw)) return false;
+      }
+
+      return true;
+    }).toList();
   }
 
   Future<int> _getRealStock(ProductModel product) async {
@@ -55,10 +149,77 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String _formatPrice(dynamic price) {
+    double value = 0.0;
+    if (price is String) value = double.tryParse(price) ?? 0.0;
+    else if (price is num) value = price.toDouble();
+    return value.toInt().toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.',
+    );
+  }
+
+  void _selectAll() {
+    setState(() {
+      _selectedRootId = null;
+      _selectedCategoryId = null;
+    });
+  }
+
+  void _selectRoot(CategoryModel root) {
+    setState(() {
+      _selectedRootId = root.id;
+      _selectedCategoryId = root.id;
+    });
+  }
+
+  void _selectChild(CategoryModel child) {
+    setState(() {
+      _selectedCategoryId = child.id;
+    });
+  }
+
+  void _openCategoryPicker(CategoryProvider cp) {
+    final options = cp.flattenTree();
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: ListView(
+          children: [
+            ListTile(
+              title: const Text('Tất cả'),
+              trailing: _selectedCategoryId == null ? const Icon(Icons.check) : null,
+              onTap: () {
+                Navigator.pop(context);
+                _selectAll();
+              },
+            ),
+            const Divider(height: 1),
+            ...options.map((c) {
+              final selected = _selectedCategoryId == c.id;
+              return ListTile(
+                title: Text(c.name),
+                trailing: selected ? const Icon(Icons.check) : null,
+                onTap: () {
+                  Navigator.pop(context);
+                  // rootId: lấy theo parent chain là phức tạp -> ở Home chip vẫn xử lý root,
+                  // picker thì cứ chọn trực tiếp categoryId
+                  setState(() => _selectedCategoryId = c.id);
+                },
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showProductCartDialog(ProductModel product, {bool isBuyNow = false}) async {
     int quantity = 1;
+
     int? selectedVariantId;
-    List<dynamic> variants = [];
+    List<VariantItem> variants = [];
 
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     try {
@@ -69,23 +230,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
 
+    bool didInitDefault = false;
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateDialog) {
-          int maxStock = _stockCache[product.id] ?? 999999;
-
-          if (selectedVariantId != null) {
-            dynamic selected;
-            try {
-              selected = variants.firstWhere((v) => v.id == selectedVariantId);
-            } catch (_) {
-              selected = null;
-            }
-            if (selected != null) {
-              maxStock = selected.stock;
+          if (!didInitDefault) {
+            didInitDefault = true;
+            if (variants.isNotEmpty) {
+              final firstInStock = variants.firstWhere(
+                (v) => v.stock > 0,
+                orElse: () => variants.first,
+              );
+              if (firstInStock.stock > 0) {
+                selectedVariantId = firstInStock.id;
+              }
             }
           }
+
+          VariantItem? selectedVariant;
+          if (selectedVariantId != null) {
+            try {
+              selectedVariant = variants.firstWhere((v) => v.id == selectedVariantId);
+            } catch (_) {
+              selectedVariant = null;
+            }
+          }
+
+          int maxStock = _stockCache[product.id] ?? (product.stock ?? 0);
+          if (selectedVariant != null) {
+            maxStock = selectedVariant.stock;
+          }
+
+          final displayPrice = (selectedVariant != null && selectedVariant.price > 0)
+              ? _formatPrice(selectedVariant.price)
+              : _formatPrice(product.price);
 
           return Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -138,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '${product.price.toInt()} VNĐ',
+                              '$displayPrice VNĐ',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -146,13 +326,29 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            FutureBuilder<int>(
-                              future: _getRealStock(product),
-                              builder: (context, snapshot) {
-                                final stock = snapshot.data ?? 0;
-                                return Text('Kho: $stock', style: const TextStyle(color: Colors.grey));
-                              },
-                            ),
+
+                            if (variants.isNotEmpty)
+                              Text(
+                                selectedVariant != null ? 'Kho: ${selectedVariant.stock}' : 'Kho: ...',
+                                style: const TextStyle(color: Colors.grey),
+                              )
+                            else
+                              FutureBuilder<int>(
+                                future: _getRealStock(product),
+                                builder: (context, snapshot) {
+                                  final stock = snapshot.data ?? 0;
+                                  return Text('Kho: $stock', style: const TextStyle(color: Colors.grey));
+                                },
+                              ),
+
+                            if (variants.isNotEmpty && selectedVariant != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  'Đang chọn: ${selectedVariant.name}',
+                                  style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -175,7 +371,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           selected: isSelected,
                           onSelected: stock <= 0
                               ? null
-                              : (val) => setStateDialog(() => selectedVariantId = val ? v.id : null),
+                              : (val) {
+                                  setStateDialog(() {
+                                    selectedVariantId = val ? v.id : null;
+                                    quantity = 1;
+                                  });
+                                },
                           selectedColor: const Color(0xFF0D6EFD),
                           labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
                           backgroundColor: Colors.grey.shade100,
@@ -183,6 +384,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       }).toList(),
                     ),
                     const SizedBox(height: 18),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.withOpacity(0.25)),
+                      ),
+                      child: const Text(
+                        'Sản phẩm này chưa có biến thể để mua (variant).\nVui lòng chọn sản phẩm khác.',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
                   ],
 
                   Row(
@@ -197,7 +412,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           Text('$quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           IconButton(
-                            onPressed: quantity >= maxStock ? null : () => setStateDialog(() => quantity++),
+                            onPressed: (maxStock <= 0 || quantity >= maxStock)
+                                ? null
+                                : () => setStateDialog(() => quantity++),
                             icon: const Icon(Icons.add_circle_outline, color: Color(0xFF0D6EFD)),
                           ),
                         ],
@@ -210,12 +427,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        if (variants.isNotEmpty && selectedVariantId == null) {
+                        if (variants.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Sản phẩm chưa có biến thể để mua')),
+                          );
+                          return;
+                        }
+
+                        if (selectedVariantId == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Vui lòng chọn phân loại')),
                           );
                           return;
                         }
+
                         if (maxStock <= 0) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Sản phẩm đã hết hàng')),
@@ -226,7 +451,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         try {
                           await Provider.of<CartProvider>(context, listen: false).addToCart(
                             product.id,
-                            variantId: selectedVariantId,
+                            variantId: selectedVariantId!,
                             quantity: quantity,
                           );
 
@@ -273,7 +498,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _header(BuildContext context) {
+  Widget _header(BuildContext context, CategoryProvider cp) {
+    final roots = cp.tree; // root nodes
+
+    CategoryModel? selectedRoot;
+    if (_selectedRootId != null) {
+      selectedRoot = _findNodeById(roots, _selectedRootId!);
+    }
+
+    final children = selectedRoot?.children ?? const <CategoryModel>[];
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: const BoxDecoration(
@@ -347,7 +581,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const SizedBox(height: 14),
-
             const Text(
               'Tìm món bạn thích 👀',
               style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
@@ -363,23 +596,30 @@ class _HomeScreenState extends State<HomeScreen> {
               child: TextField(
                 controller: _searchCtrl,
                 textInputAction: TextInputAction.search,
-                onSubmitted: (_) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tạm thời chưa làm tìm kiếm ở Home')),
-                  );
-                },
+                onSubmitted: (v) => setState(() => _keyword = v.trim()),
                 decoration: InputDecoration(
                   hintText: 'Tìm sản phẩm...',
                   prefixIcon: const Icon(Icons.search),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.tune),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Tạm thời chưa có bộ lọc')),
-                      );
-                    },
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Chọn danh mục',
+                        icon: const Icon(Icons.category_outlined),
+                        onPressed: () => _openCategoryPicker(cp),
+                      ),
+                      if (_searchCtrl.text.isNotEmpty || _keyword.isNotEmpty)
+                        IconButton(
+                          tooltip: 'Xoá tìm kiếm',
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _keyword = '');
+                          },
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -387,19 +627,44 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 14),
 
-            // Categories quick
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: const [
-                  _CatChip(icon: Icons.phone_iphone, label: 'Điện thoại'),
-                  _CatChip(icon: Icons.laptop, label: 'Laptop'),
-                  _CatChip(icon: Icons.checkroom, label: 'Thời trang'),
-                  _CatChip(icon: Icons.headphones, label: 'Phụ kiện'),
-                  _CatChip(icon: Icons.sports_esports, label: 'Gaming'),
-                ],
+            // ✅ Categories from API
+            if (cp.loadingTree)
+              const Text('Đang tải danh mục...', style: TextStyle(color: Colors.white70))
+            else ...[
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _CategoryChip(
+                      label: 'Tất cả',
+                      selected: _selectedCategoryId == null,
+                      onTap: _selectAll,
+                    ),
+                    ...roots.map((c) => _CategoryChip(
+                          label: c.name,
+                          selected: _selectedRootId == c.id,
+                          onTap: () => _selectRoot(c),
+                        )),
+                  ],
+                ),
               ),
-            ),
+
+              if (children.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ...children.map((c) => _CategoryChip(
+                            label: c.name,
+                            selected: _selectedCategoryId == c.id,
+                            onTap: () => _selectChild(c),
+                          )),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ],
         ),
       ),
@@ -441,7 +706,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // image + badge
             Expanded(
               flex: 6,
               child: Stack(
@@ -490,7 +754,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${product.price.toInt()} VNĐ',
+                      '${_formatPrice(product.price)} VNĐ',
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.red),
                     ),
                     const SizedBox(height: 6),
@@ -532,58 +796,73 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
-      body: Column(
-        children: [
-          _header(context),
-          Expanded(
-            child: Consumer<ProductProvider>(
-              builder: (context, productProvider, child) {
-                if (productProvider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (productProvider.products.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text(
-                        'Không tải được sản phẩm.\nVui lòng kiểm tra kết nối mạng.',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  );
-                }
+      body: Consumer2<ProductProvider, CategoryProvider>(
+        builder: (context, productProvider, categoryProvider, child) {
+          final filtered = _applyFilters(productProvider.products, categoryProvider.tree);
 
-                return CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: _sectionHeader('Sản phẩm nổi bật', onViewAll: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Tạm thời chưa có trang Xem tất cả')),
-                        );
-                      }),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      sliver: SliverGrid(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _productCard(productProvider.products[index]),
-                          childCount: productProvider.products.length,
+          return Column(
+            children: [
+              _header(context, categoryProvider),
+              Expanded(
+                child: Builder(
+                  builder: (_) {
+                    if (productProvider.isLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (productProvider.products.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text(
+                            'Không tải được sản phẩm.\nVui lòng kiểm tra kết nối mạng.',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                          childAspectRatio: 0.70,
+                      );
+                    }
+
+                    if (filtered.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text(
+                            'Không có sản phẩm trong bộ lọc hiện tại.',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
+                      );
+                    }
+
+                    return CustomScrollView(
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: _sectionHeader('Sản phẩm nổi bật', onViewAll: () {}),
+                        ),
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          sliver: SliverGrid(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _productCard(filtered[index]),
+                              childCount: filtered.length,
+                            ),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                              childAspectRatio: 0.70,
+                            ),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 18)),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
 
       bottomNavigationBar: BottomNavigationBar(
@@ -594,6 +873,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: (index) {
           if (index == 3) Navigator.pushNamed(context, '/personal-info');
           if (index == 2) Navigator.pushNamed(context, '/cart');
+          if (index == 1) {
+            final cp = Provider.of<CategoryProvider>(context, listen: false);
+            _openCategoryPicker(cp); // ✅ mở picker danh mục
+          }
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -606,28 +889,40 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _CatChip extends StatelessWidget {
-  final IconData icon;
+class _CategoryChip extends StatelessWidget {
   final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
-  const _CatChip({required this.icon, required this.label});
+  const _CategoryChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.20),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withOpacity(0.28)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 18),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
-        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.white.withOpacity(0.20),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withOpacity(0.28)),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? const Color(0xFF0D6EFD) : Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ),
       ),
     );
   }

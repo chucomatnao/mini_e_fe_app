@@ -6,16 +6,13 @@ import '../models/cart_model.dart';
 
 class CartService {
   // --------------------------------------------------------
-  // 1. LOGIC LẤY TOKEN (Đã sửa cho khớp với AuthProvider)
+  // 1. LẤY TOKEN (đã khớp AuthProvider)
   // --------------------------------------------------------
   Future<String> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // SỬA: Đổi từ 'accessToken' thành 'access_token' để khớp với AuthProvider
     final token = prefs.getString('access_token');
 
     if (token == null || token.isEmpty) {
-      // Ném lỗi này để CartProvider hoặc UI bắt được và xử lý logout
       throw Exception('Unauthorized');
     }
     return token;
@@ -29,16 +26,13 @@ class CartService {
     };
   }
 
-  // Helper tạo URL
-  String _getUrl(String endpoint) {
-    return '${AppConstants.baseUrl}$endpoint';
-  }
+  String _getUrl(String endpoint) => '${AppConstants.baseUrl}$endpoint';
 
   // --------------------------------------------------------
-  // 2. CÁC HÀM GỌI API GIỎ HÀNG
+  // 2. API GIỎ HÀNG
   // --------------------------------------------------------
 
-  // Lấy giỏ hàng
+  // 🛒 Lấy giỏ hàng
   Future<CartData?> getCart() async {
     try {
       final url = Uri.parse(_getUrl('/cart'));
@@ -51,7 +45,7 @@ class CartService {
         final res = CartResponse.fromJson(body);
         return res.data;
       } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized'); // Hết phiên đăng nhập
+        throw Exception('Unauthorized');
       } else {
         throw Exception('Lỗi tải giỏ hàng: ${response.statusCode}');
       }
@@ -60,17 +54,27 @@ class CartService {
     }
   }
 
-  // Thêm vào giỏ
-  Future<CartData?> addToCart({required int productId, int? variantId, int quantity = 1}) async {
+  // 🛒 Thêm sản phẩm vào giỏ
+  Future<CartData?> addToCart({
+    required int productId,
+    int? variantId, // ✅ cho phép null
+    int quantity = 1,
+  }) async {
     final url = Uri.parse(_getUrl('/cart/items'));
     final headers = await _getHeaders();
-    final body = jsonEncode({
-      'productId': productId,
-      'variantId': variantId,
-      'quantity': quantity,
-    });
 
-    final response = await http.post(url, headers: headers, body: body);
+    // ✅ chỉ thêm variantId nếu có giá trị
+    final Map<String, dynamic> body = {
+      'productId': productId,
+      'quantity': quantity,
+      if (variantId != null) 'variantId': variantId,
+    };
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(body),
+    );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final res = CartResponse.fromJson(jsonDecode(response.body));
@@ -78,12 +82,16 @@ class CartService {
     } else if (response.statusCode == 401) {
       throw Exception('Unauthorized');
     } else {
-      final errorBody = jsonDecode(response.body);
-      throw Exception(errorBody['message'] ?? 'Lỗi thêm vào giỏ');
+      try {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['message'] ?? 'Lỗi thêm vào giỏ');
+      } catch (_) {
+        throw Exception('Lỗi thêm vào giỏ (${response.statusCode})');
+      }
     }
   }
 
-  // Cập nhật số lượng
+  // 🛒 Cập nhật số lượng
   Future<CartData?> updateItemQuantity(int itemId, int quantity) async {
     final url = Uri.parse(_getUrl('/cart/items/$itemId'));
     final headers = await _getHeaders();
@@ -97,11 +105,11 @@ class CartService {
     } else if (response.statusCode == 401) {
       throw Exception('Unauthorized');
     } else {
-      throw Exception('Lỗi cập nhật giỏ hàng');
+      throw Exception('Lỗi cập nhật giỏ hàng (${response.statusCode})');
     }
   }
 
-  // Xóa sản phẩm
+  // 🛒 Xóa 1 sản phẩm
   Future<CartData?> removeItem(int itemId) async {
     final url = Uri.parse(_getUrl('/cart/items/$itemId'));
     final headers = await _getHeaders();
@@ -114,12 +122,12 @@ class CartService {
     } else if (response.statusCode == 401) {
       throw Exception('Unauthorized');
     } else {
-      throw Exception('Lỗi xóa sản phẩm');
+      throw Exception('Lỗi xóa sản phẩm (${response.statusCode})');
     }
   }
-  // Xóa sạch giỏ hàng (Clear Cart)
+
+  // 🧹 Xóa sạch giỏ hàng
   Future<CartData?> clearCart() async {
-    // Gọi vào endpoint DELETE /cart
     final url = Uri.parse(_getUrl('/cart'));
     final headers = await _getHeaders();
 
@@ -131,8 +139,7 @@ class CartService {
     } else if (response.statusCode == 401) {
       throw Exception('Unauthorized');
     } else {
-      throw Exception('Lỗi làm sạch giỏ hàng');
+      throw Exception('Lỗi làm sạch giỏ hàng (${response.statusCode})');
     }
   }
-
 }

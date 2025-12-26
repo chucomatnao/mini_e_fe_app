@@ -1,21 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/address_model.dart'; // Import Model
+import '../../models/address_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/address_provider.dart';
 import 'add_address_screen.dart';
 
 class AddressListScreen extends StatefulWidget {
-  const AddressListScreen({Key? key}) : super(key: key);
+  final bool selectMode; // ✅ mới
+  final int? initialSelectedId; // ✅ mới (để highlight)
+
+  const AddressListScreen({
+    Key? key,
+    this.selectMode = false,
+    this.initialSelectedId,
+  }) : super(key: key);
 
   @override
   State<AddressListScreen> createState() => _AddressListScreenState();
 }
 
 class _AddressListScreenState extends State<AddressListScreen> {
+  int? _selectedId;
+
   @override
   void initState() {
     super.initState();
+    _selectedId = widget.initialSelectedId;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshList();
     });
@@ -24,11 +35,11 @@ class _AddressListScreenState extends State<AddressListScreen> {
   Future<void> _refreshList() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (auth.accessToken != null) {
-      await Provider.of<AddressProvider>(context, listen: false).fetchAddresses(auth.accessToken!);
+      await Provider.of<AddressProvider>(context, listen: false)
+          .fetchAddresses(auth.accessToken!);
     }
   }
 
-  // Hàm xóa (như cũ)
   Future<void> _deleteAddress(int id) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -36,7 +47,10 @@ class _AddressListScreenState extends State<AddressListScreen> {
         title: const Text('Xóa địa chỉ'),
         content: const Text('Bạn có chắc chắn muốn xóa địa chỉ này?'),
         actions: [
-          TextButton(child: const Text('Hủy'), onPressed: () => Navigator.pop(ctx, false)),
+          TextButton(
+            child: const Text('Hủy'),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
           TextButton(
             child: const Text('Xóa', style: TextStyle(color: Colors.red)),
             onPressed: () => Navigator.pop(ctx, true),
@@ -48,34 +62,40 @@ class _AddressListScreenState extends State<AddressListScreen> {
     if (confirm == true && mounted) {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       try {
-        await Provider.of<AddressProvider>(context, listen: false).deleteAddress(auth.accessToken!, id);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa địa chỉ thành công')));
+        await Provider.of<AddressProvider>(context, listen: false)
+            .deleteAddress(auth.accessToken!, id);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa địa chỉ thành công')),
+        );
+
+        // nếu đang chọn mà bị xóa thì clear chọn
+        if (_selectedId == id) setState(() => _selectedId = null);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xóa: $e'), backgroundColor: Colors.red));
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi xóa: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
 
-  // --- HÀM MỚI: ĐẶT LÀM MẶC ĐỊNH ---
   Future<void> _setAsDefault(int id) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final provider = Provider.of<AddressProvider>(context, listen: false);
 
     try {
-      // Gọi API update với isDefault = true
-      // Lưu ý: Backend cần xử lý logic tự động tắt các default khác
       await provider.updateAddress(auth.accessToken!, id, {'isDefault': true});
-
-      // Tải lại danh sách để cập nhật giao diện
       await _refreshList();
 
-      if (mounted) {
-        Navigator.pop(context); // Đóng modal
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã đặt làm địa chỉ mặc định')),
-        );
-      }
+      if (!mounted) return;
+      Navigator.pop(context); // đóng modal detail
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã đặt làm địa chỉ mặc định')),
+      );
     } catch (e) {
+      if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
@@ -83,42 +103,37 @@ class _AddressListScreenState extends State<AddressListScreen> {
     }
   }
 
-  // --- HÀM MỚI: HIỂN THỊ CHI TIẾT ---
   void _showAddressDetail(AddressModel addr) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Cho phép modal điều chỉnh chiều cao linh hoạt hơn
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        // Bọc SingleChildScrollView để tránh lỗi Overflow khi nội dung dài
         return SingleChildScrollView(
           child: Padding(
-            // Thêm padding bottom theo viewInsets để tránh bị che bởi phím ảo (nếu có)
-            // hoặc thanh điều hướng hệ thống
             padding: EdgeInsets.only(
-              top: 20.0,
-              left: 20.0,
-              right: 20.0,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.0,
+              top: 20,
+              left: 20,
+              right: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Center(
-                    child: Text('Thông tin địa chỉ',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
-                    )
+                  child: Text(
+                    'Thông tin địa chỉ',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const Divider(),
                 const SizedBox(height: 10),
-
                 _buildDetailRow(Icons.person, 'Người nhận', addr.fullName),
                 _buildDetailRow(Icons.phone, 'Số điện thoại', addr.phone),
                 _buildDetailRow(Icons.location_on, 'Địa chỉ', addr.formattedAddress),
-
                 if (addr.isDefault)
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
@@ -126,26 +141,31 @@ class _AddressListScreenState extends State<AddressListScreen> {
                       children: const [
                         Icon(Icons.check_circle, color: Colors.green),
                         SizedBox(width: 8),
-                        Text('Đây là địa chỉ mặc định', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                        Text(
+                          'Đây là địa chỉ mặc định',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-
                 const SizedBox(height: 24),
 
-                // Nút chức năng
                 SizedBox(
                   width: double.infinity,
                   child: addr.isDefault
                       ? ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                    onPressed: null,
-                    child: const Text('Đã là mặc định', style: TextStyle(color: Colors.white)),
-                  )
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                          onPressed: null,
+                          child: const Text('Đã là mặc định',
+                              style: TextStyle(color: Colors.white)),
+                        )
                       : ElevatedButton(
-                    onPressed: () => _setAsDefault(addr.id),
-                    child: const Text('Đặt làm mặc định'),
-                  ),
+                          onPressed: () => _setAsDefault(addr.id),
+                          child: const Text('Đặt làm mặc định'),
+                        ),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -187,17 +207,25 @@ class _AddressListScreenState extends State<AddressListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final title = widget.selectMode ? 'Chọn địa chỉ' : 'Địa chỉ của tôi';
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Địa chỉ của tôi')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddAddressScreen()),
-          ).then((_) => _refreshList()); // Refresh khi quay lại
-        },
-        child: const Icon(Icons.add),
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          IconButton(
+            tooltip: 'Thêm địa chỉ',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddAddressScreen()),
+              ).then((_) => _refreshList());
+            },
+            icon: const Icon(Icons.add),
+          ),
+        ],
       ),
+
       body: Consumer<AddressProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading && provider.addresses.isEmpty) {
@@ -205,7 +233,28 @@ class _AddressListScreenState extends State<AddressListScreen> {
           }
 
           if (provider.addresses.isEmpty) {
-            return const Center(child: Text('Chưa có địa chỉ nào'));
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Chưa có địa chỉ nào'),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AddAddressScreen()),
+                        ).then((_) => _refreshList());
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Thêm địa chỉ mới'),
+                    )
+                  ],
+                ),
+              ),
+            );
           }
 
           return ListView.separated(
@@ -214,10 +263,23 @@ class _AddressListScreenState extends State<AddressListScreen> {
             separatorBuilder: (ctx, i) => const Divider(),
             itemBuilder: (ctx, i) {
               final addr = provider.addresses[i];
-              return ListTile(
-                // THÊM: Sự kiện click vào item
-                onTap: () => _showAddressDetail(addr),
+              final isPicked = _selectedId == addr.id;
 
+              return ListTile(
+                onTap: () {
+                  if (widget.selectMode) {
+                    setState(() => _selectedId = addr.id);
+                    Navigator.pop(context, addr); // ✅ trả về địa chỉ đã chọn
+                  } else {
+                    _showAddressDetail(addr);
+                  }
+                },
+                leading: widget.selectMode
+                    ? Icon(
+                        isPicked ? Icons.radio_button_checked : Icons.radio_button_off,
+                        color: isPicked ? Colors.blue : Colors.grey,
+                      )
+                    : null,
                 title: Text(addr.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,31 +298,36 @@ class _AddressListScreenState extends State<AddressListScreen> {
                           color: Colors.red[100],
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('Mặc định', style: TextStyle(color: Colors.red, fontSize: 10)),
+                        child: const Text('Mặc định',
+                            style: TextStyle(color: Colors.red, fontSize: 10)),
                       )
                   ],
                 ),
                 isThreeLine: true,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => AddAddressScreen(address: addr),
+
+                // ✅ selectMode thì ẩn edit/delete (tránh rối)
+                trailing: widget.selectMode
+                    ? null
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AddAddressScreen(address: addr),
+                                ),
+                              ).then((_) => _refreshList());
+                            },
                           ),
-                        ).then((_) => _refreshList());
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteAddress(addr.id),
-                    ),
-                  ],
-                ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteAddress(addr.id),
+                          ),
+                        ],
+                      ),
               );
             },
           );

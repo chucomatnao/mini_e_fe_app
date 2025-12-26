@@ -1,12 +1,12 @@
 // 1. Cần import thư viện này để dùng biến kIsWeb
-import 'package:flutter/foundation.dart'; 
+import 'package:flutter/foundation.dart';
 
 // utils/app_constants.dart
 class AppConstants {
   // 2. Sửa đoạn baseUrl thành logic kiểm tra môi trường
-  static const String baseUrl = kIsWeb 
-      ? 'http://localhost:3000/api'       // Nếu chạy trên Web (Chrome)
-      : 'http://10.0.2.2:3000/api';       // Nếu chạy trên máy ảo Android
+  static const String baseUrl = kIsWeb
+      ? 'http://localhost:3000/api' // Nếu chạy trên Web (Chrome)
+      : 'http://10.0.2.2:3000/api'; // Nếu chạy trên máy ảo Android
 
   // AUTH
   static const String registerEndpoint = '/auth/register';
@@ -18,7 +18,7 @@ class AppConstants {
   static const String resetPasswordEndpoint = '/auth/reset-password';
 }
 
-// USERS API 
+// USERS API
 class UsersApi {
   static const String users = '/users';
   static const String me = '/users/me';
@@ -32,28 +32,37 @@ class UsersApi {
 // SHOP API
 class ShopsApi {
   // Public
-  static const String shops = '/shops';                    
-  static const String checkName = '/shops/check-name';      
+  static const String shops = '/shops';
+  static const String checkName = '/shops/check-name';
 
   // Authenticated
-  static const String register = '/shops/register';         
-  static const String myShop = '/shops/me';                 
+  static const String register = '/shops/register';
+  static const String myShop = '/shops/me';
 
   // Owner / Admin
-  static String byId(String id) => '/shops/$id';             
+  static String byId(String id) => '/shops/$id';
 }
 
-// PRODUCT API 
+// PRODUCT API
 class ProductApi {
   // Public
-  static const String products = '/products';                    
-  static const String search = '/products/search';               
+  static const String products = '/products';
+  static const String search = '/products/search';
 
   // Authenticated
-  static String byId(int id) => '/products/$id';                 
-  static String variants(int productId) => '/products/$productId/variants'; 
-  static String generateVariants(int productId) => '/products/$productId/variants/generate'; 
-  static String variant(int productId, int variantId) => '/products/$productId/variants/$variantId'; 
+  static String byId(int id) => '/products/$id';
+  static String variants(int productId) => '/products/$productId/variants';
+  static String generateVariants(int productId) =>
+      '/products/$productId/variants/generate';
+  static String variant(int productId, int variantId) =>
+      '/products/$productId/variants/$variantId';
+}
+
+// ✅ CATEGORY API (MỚI)
+class CategoryApi {
+  static const String categories = '/categories';
+  static const String tree = '/categories/tree';
+  static String byId(int id) => '/categories/$id';
 }
 
 class CartApi {
@@ -72,10 +81,10 @@ class AddressApi {
 
 // Order API
 class OrderApi {
-  static const String preview = '/orders/preview'; 
-  static const String create = '/orders';          
-  static const String mine = '/orders';            
-  static String detail(String id) => '/orders/$id'; 
+  static const String preview = '/orders/preview';
+  static const String create = '/orders';
+  static const String mine = '/orders';
+  static String detail(String id) => '/orders/$id';
 }
 
 // Payment API

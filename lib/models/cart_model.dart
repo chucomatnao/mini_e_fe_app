@@ -1,7 +1,5 @@
 // lib/models/cart_model.dart
 
-import 'package:flutter/foundation.dart';
-
 /// ---------------------------------------------------------------------------
 /// 1. CART RESPONSE (Wrapper trả về từ Backend)
 /// ---------------------------------------------------------------------------
@@ -27,7 +25,7 @@ class CartData {
   final String currency;
   final int itemsCount;
   final int itemsQuantity;
-  final double subtotal; // Tổng tiền server trả về (của tất cả item)
+  final double subtotal; // tổng tiền server trả về (tất cả item)
   final List<CartItemModel> items;
 
   CartData({
@@ -45,17 +43,15 @@ class CartData {
       currency: json['currency'] ?? 'VND',
       itemsCount: json['itemsCount'] ?? 0,
       itemsQuantity: json['itemsQuantity'] ?? 0,
-      // Parse an toàn cho Decimal/Double
       subtotal: double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0.0,
       items: (json['items'] as List<dynamic>?)
-          ?.map((e) => CartItemModel.fromJson(e))
-          .toList() ??
+              ?.map((e) => CartItemModel.fromJson(e))
+              .toList() ??
           [],
     );
   }
 
-  // [MỚI] Getter tính tổng tiền chỉ cho các sản phẩm ĐƯỢC CHỌN (isSelected = true)
-  // Dùng để hiển thị ở nút "Thanh toán" hoặc màn hình Checkout
+  /// Tổng tiền chỉ tính các item được tick chọn
   double get selectedSubtotal {
     return items
         .where((item) => item.isSelected)
@@ -64,22 +60,28 @@ class CartData {
 }
 
 /// ---------------------------------------------------------------------------
-/// 3. CART ITEM MODEL (Chi tiết sản phẩm)
+/// 3. CART ITEM MODEL
 /// ---------------------------------------------------------------------------
 class CartItemModel {
-  final int id;         // ID dòng trong giỏ
+  final int id;
   final int productId;
   final int? variantId;
+
   final String title;
   final String? variantName;
   final String? sku;
-  final int? imageId;   // BE trả về ID ảnh, FE cần map sang URL nếu cần
+
+  final int? imageId;
+
+  /// ✅ NEW: backend đã có imageUrl snapshot cho biến thể
+  final String? imageUrl;
+
   final double price;
 
-  // [SỬA LỖI 1] Bỏ 'final' để có thể cập nhật số lượng trên UI
+  /// phải mutable để provider optimistic update
   int quantity;
 
-  // [SỬA LỖI 2] Thêm biến trạng thái chọn (Chỉ dùng ở Frontend, không lưu DB)
+  /// chỉ dùng ở FE để tick chọn
   bool isSelected;
 
   CartItemModel({
@@ -90,33 +92,32 @@ class CartItemModel {
     this.variantName,
     this.sku,
     this.imageId,
+    this.imageUrl,
     required this.price,
     required this.quantity,
-    this.isSelected = true, // Mặc định là chọn khi load xong
+    this.isSelected = true,
   });
 
-  // [SỬA LỖI 3] Getter alias: 'name' trỏ về 'title'
-  // Giúp code CheckoutScreen (dùng .name) không bị lỗi
   String get name => title;
 
-  // Getter alias: 'image' (tạm thời trả về string rỗng nếu chưa có logic ảnh)
-  String get image => '';
+  /// ✅ dùng cho các màn hình khác nếu cần
+  String get image => imageUrl ?? '';
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
     return CartItemModel(
       id: json['id'] ?? 0,
       productId: json['productId'] ?? 0,
       variantId: json['variantId'],
-      title: json['productName'] ?? json['title'] ?? 'Sản phẩm', // Map linh hoạt
+      title: json['title'] ?? json['productName'] ?? 'Sản phẩm',
       variantName: json['variantName'],
       sku: json['sku'],
-      imageId: json['imageId'], // Hoặc json['image'] tuỳ response BE
+      imageId: json['imageId'],
 
-      // Parse giá an toàn
+      /// ✅ đọc imageUrl từ BE
+      imageUrl: json['imageUrl'] ?? json['image'] ?? json['productImage'],
+
       price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
       quantity: json['quantity'] ?? 1,
-
-      // Mặc định load về là chọn
       isSelected: true,
     );
   }

@@ -15,33 +15,63 @@ class CartProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  // --- GETTERS CHO UI ---
+  // ===== GETTERS CHO UI =====
   int get totalItems => _cartData?.itemsQuantity ?? 0;
-
   double get subtotal => _cartData?.subtotal ?? 0.0;
 
   List<CartItemModel> get items => _cartData?.items ?? [];
 
-  // [QUAN TRỌNG] Getter trả về danh sách ID các sản phẩm đang được tick chọn
-  // Đây là cái mà CheckoutScreen đang báo lỗi thiếu
-  List<int> get selectedCartItemIds {
-    if (_cartData == null) return [];
-    return _cartData!.items
-        .where((item) => item.isSelected)
-        .map((item) => item.id)
-        .toList();
+  int get selectedCount {
+    if (_cartData == null) return 0;
+    return _cartData!.items.where((e) => e.isSelected).length;
   }
 
-  // --- LOGIC GỌI API ---
+  bool get isAllSelected {
+    if (_cartData == null || _cartData!.items.isEmpty) return false;
+    return _cartData!.items.every((e) => e.isSelected);
+  }
 
-  // Lấy giỏ hàng
+  double get selectedSubtotal => _cartData?.selectedSubtotal ?? 0.0;
+
+  List<int> get selectedCartItemIds {
+    if (_cartData == null) return [];
+    return _cartData!.items.where((e) => e.isSelected).map((e) => e.id).toList();
+  }
+
+  // Giữ lại trạng thái tick khi server trả data mới
+  CartData _mergeSelection(CartData newData) {
+    final oldSelected = <int, bool>{};
+    if (_cartData != null) {
+      for (final it in _cartData!.items) {
+        oldSelected[it.id] = it.isSelected;
+      }
+    }
+    for (final it in newData.items) {
+      it.isSelected = oldSelected[it.id] ?? true; // default true
+    }
+    return newData;
+  }
+
+  // ===== API =====
   Future<void> fetchCart() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _cartData = await _cartService.getCart();
+      final data = await _cartService.getCart();
+      if (data != null) {
+        _cartData = _mergeSelection(data);
+      } else {
+        _cartData = CartData(
+          id: 0,
+          currency: 'VND',
+          itemsCount: 0,
+          itemsQuantity: 0,
+          subtotal: 0.0,
+          items: [],
+        );
+      }
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -50,54 +80,54 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  // Thêm vào giỏ
-  Future<void> addToCart(int productId, {int? variantId, int quantity = 1}) async {
-    try {
-      // Gọi API thêm
-      // Lưu ý: cartService.addToCart nên trả về CartData mới nhất
-      final newData = await _cartService.addToCart(
-          productId: productId,
-          variantId: variantId,
-          quantity: quantity
-      );
+  Future<void> addToCart(int productId, {required int? variantId, int quantity = 1}) async {
+    // ✅ backend của bạn bắt buộc variantId
+    if (variantId == null) {
+      throw Exception('Vui lòng chọn biến thể trước khi thêm vào giỏ');
+    }
 
-      // Update data và giữ lại trạng thái chọn cũ nếu cần (hoặc reset chọn hết)
-      _cartData = newData;
+    final newData = await _cartService.addToCart(
+      productId: productId,
+      variantId: variantId,
+      quantity: quantity,
+    );
+
+    if (newData != null) {
+      _cartData = _mergeSelection(newData);
       notifyListeners();
-    } catch (e) {
-      rethrow;
     }
   }
 
-  // Update số lượng
   Future<void> updateQuantity(int itemId, int newQuantity) async {
-    if (newQuantity < 1) return; // Không cho giảm dưới 1 (hoặc logic xóa)
+    if (newQuantity < 1) return;
 
     try {
-      // Optimistic Update: Update UI ngay lập tức cho mượt
-      final index = _cartData?.items.indexWhere((e) => e.id == itemId);
-      if (index != null && index != -1) {
-        _cartData!.items[index].quantity = newQuantity;
+      // Optimistic update
+      final idx = _cartData?.items.indexWhere((e) => e.id == itemId);
+      if (idx != null && idx >= 0) {
+        _cartData!.items[idx].quantity = newQuantity;
         notifyListeners();
       }
 
-      // Gọi API sync lại
       final newData = await _cartService.updateItemQuantity(itemId, newQuantity);
-      _cartData = newData; // Sync data chuẩn từ server
-      notifyListeners();
+      if (newData != null) {
+        _cartData = _mergeSelection(newData);
+        notifyListeners();
+      }
     } catch (e) {
-      // Nếu lỗi thì fetch lại để revert số lượng cũ
       await fetchCart();
       rethrow;
     }
   }
 
-  // Xóa item
   Future<void> removeItem(int itemId) async {
     try {
-      await _cartService.removeItem(itemId);
-      // Xóa local
-      _cartData?.items.removeWhere((item) => item.id == itemId);
+      final newData = await _cartService.removeItem(itemId);
+      if (newData != null) {
+        _cartData = _mergeSelection(newData);
+      } else {
+        _cartData?.items.removeWhere((it) => it.id == itemId);
+      }
       notifyListeners();
     } catch (e) {
       await fetchCart();
@@ -105,32 +135,42 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  // --- LOGIC CHECKBOX (LOCAL STATE) ---
-
-  // Hàm toggle chọn/bỏ chọn 1 item
-  void toggleSelection(int itemId) {
-    final item = _cartData?.items.firstWhere((e) => e.id == itemId, orElse: () => throw Exception('Item not found'));
-    if (item != null) {
-      item.isSelected = !item.isSelected;
-      notifyListeners(); // Để UI cập nhật lại tổng tiền
-    }
-  }
-
-  // Hàm chọn tất cả / bỏ chọn tất cả
-  void toggleSelectAll(bool value) {
-    if (_cartData != null) {
-      for (var item in _cartData!.items) {
-        item.isSelected = value;
+  Future<void> clearCart() async {
+    try {
+      final newData = await _cartService.clearCart();
+      if (newData != null) {
+        _cartData = _mergeSelection(newData);
+      } else {
+        _cartData = CartData(
+          id: 0,
+          currency: 'VND',
+          itemsCount: 0,
+          itemsQuantity: 0,
+          subtotal: 0.0,
+          items: [],
+        );
       }
       notifyListeners();
+    } catch (e) {
+      await fetchCart();
+      rethrow;
     }
   }
 
-  // Hàm xóa các item đã chọn (Dùng sau khi thanh toán thành công)
-  void clearSelectedItems() {
-    if (_cartData != null) {
-      _cartData!.items.removeWhere((item) => item.isSelected);
+  // ===== CHECKBOX (LOCAL) =====
+  void toggleSelection(int itemId) {
+    final it = _cartData?.items.firstWhere((e) => e.id == itemId, orElse: () => throw Exception('Item not found'));
+    if (it != null) {
+      it.isSelected = !it.isSelected;
       notifyListeners();
     }
+  }
+
+  void toggleSelectAll(bool value) {
+    if (_cartData == null) return;
+    for (final it in _cartData!.items) {
+      it.isSelected = value;
+    }
+    notifyListeners();
   }
 }

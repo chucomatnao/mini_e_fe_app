@@ -9,8 +9,9 @@ import 'providers/user_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/shop_provider.dart';
 import 'providers/cart_provider.dart';
-import 'providers/address_provider.dart'; // <--- MỚI THÊM
+import 'providers/address_provider.dart';
 import 'providers/order_provider.dart';
+import 'providers/category_provider.dart'; // ✅ MỚI
 
 // Services
 import 'service/api_client.dart';
@@ -48,7 +49,6 @@ import 'screens/oders_payments/my_orders_screen.dart';
 import 'screens/oders_payments/payment_qr_screen.dart';
 import 'screens/oders_payments/payment_result_screen.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiClient().init();
@@ -65,19 +65,23 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()), // ✅ MỚI
       ],
       child: const MyApp(),
     ),
   );
 
-  // SAU KHI KHỞI TẠO ỨNG DỤNG → TỰ ĐỘNG TẢI SẢN PHẨM CHO TRANG CHỦ (chỉ ACTIVE)
+  // SAU KHI KHỞI TẠO ỨNG DỤNG → TỰ ĐỘNG TẢI DATA HOME
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await authProvider.init();
 
     final context = AuthProvider.navigatorKey.currentContext;
     if (context != null) {
-      Provider.of<ProductProvider>(context, listen: false)
-          .fetchPublicProducts();
+      // ✅ load category tree cho Home filter
+      Provider.of<CategoryProvider>(context, listen: false).fetchTree();
+
+      // ✅ load sản phẩm public
+      Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
     }
   });
 }
@@ -98,11 +102,11 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: '/login',
       routes: {
-        // === AUTH & USER ===
         '/login': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(),
         '/home': (context) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            Provider.of<CategoryProvider>(context, listen: false).fetchTree();
             Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
           });
           return const HomeScreen();
@@ -130,7 +134,6 @@ class MyApp extends StatelessWidget {
           if (args is ShopModel) {
             return ShopDetailScreen(shop: args);
           }
-          // Nếu không có hoặc sai → quay về home
           return const HomeScreen();
         },
 
@@ -165,7 +168,6 @@ class MyApp extends StatelessWidget {
 
         // === CART ===
         '/cart': (context) => const CartScreen(),
-
         '/checkout': (context) => const CheckoutScreen(),
 
         '/payment-gateway': (context) {
@@ -174,7 +176,7 @@ class MyApp extends StatelessWidget {
             qrData: args['qrData'],
             amount: args['amount'],
             sessionCode: args['sessionCode'],
-            orderIdToCheck: args['orderIdToCheck'], // <--- Mới thêm
+            orderIdToCheck: args['orderIdToCheck'],
           );
         },
 
@@ -188,7 +190,6 @@ class MyApp extends StatelessWidget {
         },
 
         '/orders': (context) => const MyOrdersScreen(),
-
       },
     );
   }
