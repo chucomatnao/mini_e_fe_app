@@ -13,7 +13,6 @@ class OrderPreview {
 
   factory OrderPreview.fromJson(Map<String, dynamic> json) {
     return OrderPreview(
-      // Parse an toàn: chuyển sang String rồi parse Double để tránh lỗi int/double
       subtotal: double.tryParse(json['subtotal'].toString()) ?? 0.0,
       shippingFee: double.tryParse(json['shippingFee'].toString()) ?? 0.0,
       total: double.tryParse(json['total'].toString()) ?? 0.0,
@@ -21,16 +20,17 @@ class OrderPreview {
   }
 }
 
-// ĐỔI TÊN: OrderItemModel -> OrderModel (Vì đây là object Đơn hàng)
 class OrderModel {
   final String id;
   final String code;
-  final String status;        // PENDING, PAID, SHIPPED...
-  final String paymentStatus; // UNPAID, PAID...
+  final String status;        // PENDING, PAID, PROCESSING, SHIPPED, COMPLETED, CANCELLED
+  final String paymentStatus; // UNPAID, PAID, REFUNDED
   final String paymentMethod; // COD, VNPAY
+  final String shippingStatus; // PENDING, PICKED, IN_TRANSIT, DELIVERED, RETURNED, CANCELED
   final double total;
   final DateTime createdAt;
-  // Bổ sung list items chi tiết nếu cần hiển thị
+
+  final dynamic paymentMeta; // json object (có thể chứa { sessionCode: ... })
   final List<dynamic>? items;
 
   OrderModel({
@@ -39,23 +39,32 @@ class OrderModel {
     required this.status,
     required this.paymentStatus,
     required this.paymentMethod,
+    required this.shippingStatus,
     required this.total,
     required this.createdAt,
+    this.paymentMeta,
     this.items,
   });
 
+  String? get sessionCode {
+    final meta = paymentMeta;
+    if (meta is Map && meta['sessionCode'] != null) return meta['sessionCode'].toString();
+    return null;
+  }
+
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    final createdRaw = json['created_at'] ?? json['createdAt'];
+
     return OrderModel(
-      id: json['id'],
-      code: json['code'],
-      status: json['status'],
-      // Backend có thể trả về camelCase hoặc snake_case tuỳ config, check cả 2 cho chắc
-      paymentStatus: json['payment_status'] ?? json['paymentStatus'] ?? 'UNPAID',
-      paymentMethod: json['payment_method'] ?? json['paymentMethod'] ?? 'COD',
+      id: json['id'].toString(),
+      code: json['code'].toString(),
+      status: (json['status'] ?? 'PENDING').toString(),
+      paymentStatus: (json['payment_status'] ?? json['paymentStatus'] ?? 'UNPAID').toString(),
+      paymentMethod: (json['payment_method'] ?? json['paymentMethod'] ?? 'COD').toString(),
+      shippingStatus: (json['shipping_status'] ?? json['shippingStatus'] ?? 'PENDING').toString(),
       total: double.tryParse(json['total'].toString()) ?? 0.0,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : DateTime.now(), // Fallback
+      createdAt: createdRaw != null ? DateTime.parse(createdRaw.toString()) : DateTime.now(),
+      paymentMeta: json['payment_meta'] ?? json['paymentMeta'],
       items: json['items'],
     );
   }

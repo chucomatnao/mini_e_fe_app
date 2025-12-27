@@ -5,17 +5,128 @@
 
 ---
 
-## 📁 Cấu Trúc Thư Mục Chi Tiết
+## 📁 Cấu Trúc Thư Mục Hiện Tại
 
 ```
-lib/
-├── main.dart                          # Điểm vào của ứng dụng (app initialization, routes, providers)
-├── models/                            # Lớp mô hình dữ liệu (Model)
-├── providers/                         # State management (Provider pattern)
-├── screens/                           # Giao diện người dùng (UI Screens)
-├── service/                           # Dịch vụ API và xử lý logic chia sẻ
-├── utils/                             # Hằng số, config, helper functions
-└── widgets/                           # Widget tái sử dụng (Custom Widget)
+mini_e_fe_app/
+├── lib/                               # Source code chính
+│   ├── main.dart                      # Điểm vào ứng dụng (MaterialApp, Routes, MultiProvider)
+│   ├── models/                        # Lớp mô hình dữ liệu (Data Models)
+│   │   ├── address_model.dart         # Mô hình địa chỉ giao hàng
+│   │   ├── cart_model.dart            # Mô hình giỏ hàng & items
+│   │   ├── category_model.dart        # Mô hình danh mục sản phẩm
+│   │   ├── order_model.dart           # Mô hình đơn hàng
+│   │   ├── product_model.dart         # Mô hình sản phẩm (images, variants, options)
+│   │   ├── review_model.dart          # Mô hình đánh giá sản phẩm
+│   │   ├── shop_model.dart            # Mô hình cửa hàng
+│   │   ├── user_model.dart            # Mô hình người dùng (USER/SELLER/ADMIN)
+│   │   └── vietnam_units.dart         # Danh sách tỉnh/quận/phường Việt Nam
+│   ├── providers/                     # State Management (Provider Pattern - ChangeNotifier)
+│   │   ├── address_provider.dart      # Quản lý danh sách địa chỉ (CRUD)
+│   │   ├── auth_provider.dart         # Xác thực (login, register, logout, token)
+│   │   ├── cart_provider.dart         # Giỏ hàng (add, update, remove, checkout)
+│   │   ├── category_provider.dart     # Danh mục sản phẩm
+│   │   ├── order_provider.dart        # Đơn hàng (create, fetch, update status)
+│   │   ├── product_provider.dart      # Sản phẩm (fetch, create, edit, variants)
+│   │   ├── review_provider.dart       # Đánh giá sản phẩm (create, fetch)
+│   │   ├── shop_provider.dart         # Cửa hàng (register, update, approve)
+│   │   └── user_provider.dart         # Thông tin người dùng (fetch, update profile)
+│   ├── screens/                       # Giao diện người dùng (UI Screens)
+│   │   ├── auths/                     # Màn hình xác thực
+│   │   │   ├── login_screen.dart      # Đăng nhập
+│   │   │   ├── register_screen.dart   # Đăng ký
+│   │   │   ├── forgot_password_screen.dart    # Quên mật khẩu
+│   │   │   ├── reset_otp_screen.dart  # Reset password với OTP
+│   │   │   ├── verify_account_screen.dart     # Xác minh email
+│   │   │   └── logout_screen.dart     # Xác nhận logout
+│   │   ├── products/                  # Quản lý sản phẩm (Seller)
+│   │   │   ├── add_product_screen.dart        # Tạo sản phẩm mới
+│   │   │   ├── edit_product_screen.dart       # Chỉnh sửa sản phẩm
+│   │   │   ├── add_variant_screen.dart        # Thêm biến thể (Màu, Size)
+│   │   │   └── product_detail_screen.dart     # Chi tiết sản phẩm + chọn variant
+│   │   ├── shops/                     # Quản lý cửa hàng
+│   │   │   ├── shop_register_screen.dart      # Đăng ký cửa hàng
+│   │   │   ├── shop_management_screen.dart    # Quản lý cửa hàng (thông tin + sản phẩm)
+│   │   │   ├── seller_product_list_screen.dart # Danh sách sản phẩm của shop
+│   │   │   ├── shop_list_screen.dart  # Danh sách tất cả cửa hàng (khách xem)
+│   │   │   └── shop_detail_screen.dart # Chi tiết cửa hàng & sản phẩm
+│   │   ├── carts/                     # Giỏ hàng
+│   │   │   └── cart_screen.dart       # Xem & quản lý giỏ hàng
+│   │   ├── orders_payments/           # Đơn hàng & thanh toán
+│   │   │   ├── checkout_screen.dart   # Kiểm tra đơn hàng trước thanh toán
+│   │   │   ├── my_orders_screen.dart  # Danh sách đơn hàng của user
+│   │   │   ├── payment_qr_screen.dart # Hiển thị mã QR thanh toán
+│   │   │   └── payment_result_screen.dart     # Kết quả thanh toán
+│   │   ├── address/                   # Quản lý địa chỉ giao hàng
+│   │   │   ├── address_list_screen.dart       # Danh sách địa chỉ
+│   │   │   └── add_address_screen.dart        # Thêm/chỉnh sửa địa chỉ
+│   │   ├── users/                     # Thông tin cá nhân
+│   │   │   ├── personal_info_screen.dart      # Xem thông tin cá nhân
+│   │   │   └── edit_personal_info_screen.dart # Chỉnh sửa thông tin
+│   │   ├── admins/                    # Bảng điều khiển quản trị
+│   │   │   ├── admin_home_screen.dart # Trang chủ admin (thống kê)
+│   │   │   ├── admin_dashboard_screen.dart    # Dashboard chi tiết
+│   │   │   ├── admin_shops_screen.dart # Danh sách cửa hàng (phê duyệt)
+│   │   │   ├── admin_shop_approval_screen.dart # Phê duyệt cửa hàng
+│   │   │   ├── admin_users_screen.dart # Danh sách người dùng
+│   │   │   └── admin_user_detail_screen.dart  # Chi tiết người dùng
+│   │   ├── home_screen.dart           # Trang chủ (danh sách sản phẩm, tìm kiếm)
+│   │   ├── main_tab_container.dart    # Container chính (4 tabs: Home, Shop, Cart, Profile)
+│   │   └── profile_screen.dart        # Thông tin & menu cá nhân
+│   ├── service/                       # Dịch vụ API & logic chia sẻ
+│   │   ├── api_client.dart            # Cấu hình Dio HTTP client (baseURL, interceptor, auth)
+│   │   ├── auth_service.dart          # Xử lý API auth (login, register, logout, refresh token)
+│   │   ├── product_service.dart       # Xử lý API sản phẩm (fetch, create, update, delete)
+│   │   ├── shop_service.dart          # Xử lý API cửa hàng (register, update, fetch)
+│   │   ├── cart_service.dart          # Xử lý API giỏ hàng (add, update, remove)
+│   │   ├── order_service.dart         # Xử lý API đơn hàng (create, fetch, update status)
+│   │   ├── address_service.dart       # Xử lý API địa chỉ (CRUD)
+│   │   ├── user_service.dart          # Xử lý API thông tin user (fetch, update profile)
+│   │   ├── review_service.dart        # Xử lý API đánh giá sản phẩm (create, fetch)
+│   │   ├── category_service.dart      # Xử lý API danh mục sản phẩm
+│   │   └── admin_service.dart         # Xử lý API admin (duyệt shop, quản lý user)
+│   ├── utils/                         # Hằng số & cấu hình
+│   │   └── app_constants.dart         # Base URL API, Endpoint routes
+│   └── widgets/                       # Widget tái sử dụng (Custom Widgets)
+│       ├── product_card.dart          # Card hiển thị sản phẩm (ảnh, tên, giá)
+│       ├── review_card.dart           # Card hiển thị đánh giá sản phẩm
+│       ├── custom_button.dart         # Button tuỳ chỉnh (màu, độ rộng)
+│       ├── loading_indicator.dart     # Indicator loading (spinner, skeleton)
+│       ├── osm_location_picker.dart   # Widget chọn vị trí trên bản đồ OpenStreetMap
+│       └── vietnam_address_selector.dart # Dropdown chọn tỉnh/quận/phường
+├── android/                           # Code native Android (Kotlin/Java)
+│   ├── app/                           # Ứng dụng Android chính
+│   │   ├── build.gradle.kts           # Build config Android
+│   │   └── src/                       # Source code native Android
+│   ├── gradle/                        # Gradle wrapper & config
+│   ├── build.gradle.kts               # Root build config
+│   ├── gradlew & gradlew.bat          # Gradle scripts
+│   └── local.properties               # Cấu hình SDK Android (local)
+├── ios/                               # Code native iOS (Swift/Objective-C)
+│   ├── Runner/                        # Ứng dụng iOS chính
+│   │   ├── AppDelegate.swift          # Entry point iOS
+│   │   ├── Info.plist                 # Cấu hình iOS app
+│   │   ├── Assets.xcassets/           # Icon & ảnh iOS
+│   │   └── GeneratedPluginRegistrant  # Plugin registrant
+│   ├── Runner.xcodeproj/              # Xcode project
+│   └── Runner.xcworkspace/            # Xcode workspace
+├── web/                               # Code web (HTML/JavaScript)
+│   ├── index.html                     # Entry HTML
+│   ├── manifest.json                  # Web manifest
+│   └── icons/                         # Icon web
+├── build/                             # Thư mục build (generated - ignore)
+│   ├── android/                       # Build output Android
+│   ├── ios/                           # Build output iOS
+│   ├── web/                           # Build output Web
+│   └── flutter_assets/                # Assets Flutter compiled
+├── test/                              # Unit & Widget tests
+│   └── widget_test.dart               # Widget test mẫu
+├── pubspec.yaml                       # Flutter dependencies & config
+├── pubspec.lock                       # Lock file dependencies
+├── analysis_options.yaml              # Lint rules
+├── devtools_options.yaml              # DevTools config
+├── README.md                          # Tài liệu dự án
+└── .gitignore                         # Git ignore rules
 ```
 
 ---
@@ -153,8 +264,17 @@ lib/
 
 | File | Chức Năng |
 |------|----------|
-| **api_client.dart** | Cấu hình `Dio` HTTP client, base URL, interceptor (token, error handling) |
-| **shop_service.dart** | Logic dùng chung cho cửa hàng (validation, utility functions) |
+| **api_client.dart** | Cấu hình Dio HTTP client (baseURL, interceptor, token header, error handling) |
+| **auth_service.dart** | API auth: login, register, logout, refresh token, verify OTP, forgot password |
+| **product_service.dart** | API sản phẩm: fetch list, fetch detail, create, update, delete, fetch variants |
+| **shop_service.dart** | API cửa hàng: register, fetch detail, update info, fetch products, approve status |
+| **cart_service.dart** | API giỏ hàng: fetch cart, add item, update quantity, remove item, clear cart |
+| **order_service.dart** | API đơn hàng: create order, fetch orders, fetch order detail, update status, cancel |
+| **address_service.dart** | API địa chỉ: fetch list, create, update, delete, set default address |
+| **user_service.dart** | API user: fetch profile, update profile, upload avatar, change password |
+| **review_service.dart** | API đánh giá: create review, fetch reviews, update review, delete review |
+| **category_service.dart** | API danh mục: fetch categories, filter by category |
+| **admin_service.dart** | API admin: fetch shops, approve/reject shop, fetch users, block/unlock user, statistics |
 
 ---
 
@@ -242,35 +362,234 @@ HomeScreen (duyệt sản phẩm)
 
 ## 🚀 Hướng Dẫn Chạy
 
-### **Điều Kiện Tiên Quyết**
-- Flutter 3.7+
-- Dart 3.0+
-- Android SDK hoặc Xcode (iOS)
-- Backend API chạy trên `http://localhost:3000/api` (hoặc cấu hình lại `AppConstants.baseUrl`)
+### **📋 Điều Kiện Tiên Quyết**
 
-### **Cài Đặt & Chạy**
+#### **1. Cài Đặt Flutter**
+- **Flutter 3.7+**: [Tải tại đây](https://flutter.dev/docs/get-started/install)
+- **Dart 3.0+**: (Tự động cài theo Flutter)
+- **Git**: [Tải tại đây](https://git-scm.com/downloads)
+
+#### **2. Cài Đặt Môi Trường Phát Triển**
+**Chọn một trong các tùy chọn sau:**
+
+**Option A: Android (Recommended)**
+- Android Studio: [Tải tại đây](https://developer.android.com/studio)
+- Android SDK 21+ (Target SDK 35+)
+- Android Emulator hoặc Physical Device
+
+**Option B: iOS (macOS only)**
+- Xcode 12+
+- CocoaPods: `sudo gem install cocoapods`
+
+**Option C: Web (Đơn Giản Nhất)**
+- Google Chrome hoặc Chromium
+
+#### **3. Backend API**
+- Backend API **PHẢI** chạy tại `http://localhost:3000/api`
+- Clone backend repository và follow hướng dẫn của nó
+
+---
+
+### **🔧 Bước Cài Đặt Chi Tiết**
+
+#### **Bước 1: Clone Project**
 ```bash
-# Clone project
-git clone <repo>
+# Clone project từ repository
+git clone https://github.com/your-repo/mini_e_fe_app.git
 cd mini_e_fe_app
-
-# Cài dependencies
-flutter pub get
-
-# Chạy app (Android)
-flutter run
-
-# Chạy app (iOS)
-flutter run -d <device_id>
-
-# Chạy app (Web)
-flutter run -d chrome
 ```
 
-### **Lưu Ý Emulator**
-- **Android Emulator**: Thay `AppConstants.baseUrl` thành `http://10.0.2.2:3000/api`
-- **iOS Simulator**: `localhost` works
-- **Physical Device**: Dùng IP máy dev (ví dụ `http://192.168.1.100:3000/api`)
+#### **Bước 2: Cài Đặt Dependencies**
+```bash
+# Tải tất cả dependencies
+flutter pub get
+
+# (Optional) Upgrade dependencies
+flutter pub upgrade
+```
+
+#### **Bước 3: Kiểm Tra Cài Đặt**
+```bash
+# Kiểm tra toàn bộ môi trường
+flutter doctor
+
+# Output mong muốn:
+# ✓ Flutter (3.7.0 trở lên)
+# ✓ Dart (3.0 trở lên)
+# ✓ Android Studio + SDK (nếu chạy Android)
+# ✓ Xcode (nếu chạy iOS)
+```
+
+#### **Bước 4: Cấu Hình Backend URL**
+
+**File**: `lib/utils/app_constants.dart`
+
+```dart
+class AppConstants {
+  // Thay đổi tùy theo môi trường:
+  
+  // Nếu chạy trên Web/Physical Device:
+  static const String baseUrl = 'http://localhost:3000/api';
+  
+  // Nếu chạy trên Android Emulator:
+  // static const String baseUrl = 'http://10.0.2.2:3000/api';
+  
+  // Nếu chạy trên Physical Device (cùng mạng với backend):
+  // static const String baseUrl = 'http://192.168.1.100:3000/api'; // Thay IP phù hợp
+}
+```
+
+---
+
+### **▶️ Chạy Application**
+
+#### **1. Chạy trên Android**
+```bash
+# Khởi động Android Emulator trước (hoặc kết nối Physical Device)
+flutter emulators --launch Pixel_4_API_31  # (tùy chọn)
+
+# Chạy ứng dụng
+flutter run
+
+# Hoặc chạy trên device cụ thể
+flutter run -d <device_id>
+
+# Liệt kê các thiết bị có sẵn:
+flutter devices
+```
+
+#### **2. Chạy trên iOS**
+```bash
+# Chạy trên iOS Simulator
+flutter run -d simulator
+
+# Hoặc chạy trên Physical Device
+flutter run -d <device_id>
+```
+
+#### **3. Chạy trên Web**
+```bash
+# Chạy trên trình duyệt Chrome
+flutter run -d chrome
+
+# Hoặc Firefox
+flutter run -d firefox
+
+# Hoặc Microsoft Edge
+flutter run -d edge
+```
+
+#### **4. Chạy ở Mode Development**
+```bash
+# Debug mode (có hot reload)
+flutter run
+
+# Release mode (tối ưu hiệu suất)
+flutter run --release
+
+# Profile mode (phân tích hiệu suất)
+flutter run --profile
+```
+
+---
+
+### **🔌 Cấu Hình Kết Nối Backend**
+
+#### **Trường Hợp 1: Backend Chạy Cục Bộ (Localhost)**
+```
+Backend: http://localhost:3000/api
+Frontend URL: http://localhost:3000/api  ✓
+```
+
+#### **Trường Hợp 2: Chạy trên Android Emulator**
+```
+Backend: http://localhost:3000/api
+Frontend URL: http://10.0.2.2:3000/api  ✓
+(10.0.2.2 là IP đặc biệt của host từ emulator)
+```
+
+#### **Trường Hợp 3: Chạy trên Physical Device (Cùng Mạng)**
+```
+Tìm IP của máy chạy backend:
+- Windows: ipconfig → IPv4 Address (ví dụ: 192.168.1.100)
+- Mac/Linux: ifconfig → inet addr
+
+Frontend URL: http://192.168.1.100:3000/api  ✓
+```
+
+#### **Trường Hợp 4: Backend Đã Deploy (Cloud)**
+```
+Backend: https://api.example.com
+Frontend URL: https://api.example.com  ✓
+```
+
+---
+
+### **✅ Kiểm Tra Sau Khi Chạy**
+
+1. **Ứng dụng khởi động thành công**
+   - Màn hình login xuất hiện
+
+2. **Kiểm tra kết nối backend**
+   - Thử đăng ký tài khoản mới
+   - Nếu không kết nối được, kiểm tra:
+     - Backend có đang chạy không
+     - URL trong `app_constants.dart` có chính xác không
+     - Firewall/VPN có chặn port 3000 không
+
+3. **Kiểm tra dữ liệu ảnh**
+   - Ảnh sản phẩm có hiển thị không
+   - Nếu không, kiểm tra backend trả đúng URL hay không
+
+---
+
+### **🐛 Khắc Phục Sự Cố Thường Gặp**
+
+| Vấn Đề | Nguyên Nhân | Cách Khắc Phục |
+|--------|-----------|------------------|
+| **App không kết nối backend** | URL sai / Backend không chạy | Kiểm tra `app_constants.dart` + start backend |
+| **Lỗi "connection refused"** | Backend chưa khởi động | Chạy backend trước: `npm start` hoặc `docker-compose up` |
+| **Ảnh không hiển thị** | URL tương đối / Domain không resolve | Backend phải trả full absolute URL (Cloudinary) |
+| **Lỗi "Port 3000 đang sử dụng"** | Port bị chiếm dụng | `lsof -i :3000` → kill process, hoặc đổi port |
+| **Hot reload không hoạt động** | Thay đổi model/provider | Restart app: `r` + Enter trong terminal |
+| **Lỗi dependencies | pubspec.yaml outdated | `flutter pub get` + `flutter pub upgrade` |
+| **iOS build lỗi** | Pod files outdated | `cd ios && pod deintegrate && pod install && cd ..` |
+
+---
+
+### **📱 Chạy Ứng Dụng Lần Đầu - Quy Trình Đầy Đủ**
+
+```bash
+# 1. Clone project
+git clone https://github.com/your-repo/mini_e_fe_app.git
+cd mini_e_fe_app
+
+# 2. Cài dependencies
+flutter pub get
+
+# 3. Kiểm tra setup
+flutter doctor
+
+# 4. Khởi động Backend (terminal khác)
+cd ../mini_e_backend  # (hoặc folder backend của bạn)
+npm install && npm start
+
+# 5. Cấu hình URL (nếu cần)
+# Edit: lib/utils/app_constants.dart
+# - Localhost: http://localhost:3000/api
+# - Android Emulator: http://10.0.2.2:3000/api
+# - Physical Device: http://192.168.1.100:3000/api
+
+# 6. Chạy app (chọn 1)
+flutter run                  # Android/Web/iOS (auto-detect)
+flutter run -d chrome        # Web
+flutter run -d simulator     # iOS Simulator
+flutter run --release        # Release mode (iOS/Android)
+
+# 7. Đăng ký tài khoản test
+# Email: test@example.com
+# Password: Test@123
+```
 
 ---
 
@@ -343,4 +662,49 @@ flutter run -d chrome
 
 ---
 
-**Cập nhật lần cuối**: 26/12/2025
+---
+
+## 💻 Công Cụ & Tiện Ích Phát Triển
+
+### **Extensions VS Code Khuyến Nghị**
+- **Dart**: Built-in
+- **Flutter**: Official Flutter extension
+- **Pubspec Assist**: Quản lý dependencies
+- **Error Lens**: Hiển thị error inline
+- **Prettier**: Code formatter
+
+### **Lệnh Thường Dùng**
+```bash
+# Kiểm tra lỗi
+flutter analyze
+
+# Format code
+flutter format lib/
+
+# Chạy test
+flutter test
+
+# Tạo icon app
+flutter pub run flutter_launcher_icons:main
+
+# Tạo splash screen
+flutter pub run flutter_native_splash:create
+
+# Build APK (Android)
+flutter build apk --release
+
+# Build AAB (Android App Bundle)
+flutter build appbundle --release
+
+# Build IPA (iOS)
+flutter build ios --release
+
+# Build Web
+flutter build web --release
+```
+
+---
+
+
+
+**Cập nhật lần cuối**: 27/12/2025

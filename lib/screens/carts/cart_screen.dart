@@ -121,7 +121,6 @@ class _CartScreenState extends State<CartScreen> {
 
           return Column(
             children: [
-              // ✅ Select all row
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -219,14 +218,8 @@ class _CartScreenState extends State<CartScreen> {
                       onPressed: cartProvider.selectedCount == 0
                           ? null
                           : () {
-                              // bạn sẽ làm thanh toán sau
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Đã chọn ${cartProvider.selectedCount} sản phẩm để thanh toán (làm sau).')),
-                              );
-
-                              // nếu muốn chuyển:
-                              // Navigator.pushNamed(context, '/checkout', arguments: cartProvider.selectedCartItemIds);
-                            },
+                        Navigator.pushNamed(context, '/checkout');
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
                         disabledBackgroundColor: Colors.grey.shade400,
@@ -281,7 +274,6 @@ class _CartItemWidgetState extends State<CartItemWidget> {
   void didUpdateWidget(covariant CartItemWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // ✅ FIX: không so sánh oldWidget.item.quantity nữa (vì cùng reference khi optimistic update)
     final newText = widget.item.quantity.toString();
     if (_qtyController.text != newText) {
       _qtyController.text = newText;
@@ -361,7 +353,6 @@ class _CartItemWidgetState extends State<CartItemWidget> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✅ checkbox chọn item
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Checkbox(
@@ -370,7 +361,6 @@ class _CartItemWidgetState extends State<CartItemWidget> {
             ),
           ),
 
-          // image
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: CachedNetworkImage(
@@ -393,7 +383,6 @@ class _CartItemWidgetState extends State<CartItemWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // title + delete
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -429,13 +418,11 @@ class _CartItemWidgetState extends State<CartItemWidget> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // price
                     Text(
                       '${widget.formatCurrency(widget.item.price)} đ',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark),
                     ),
 
-                    // stepper
                     Container(
                       height: 34,
                       decoration: BoxDecoration(

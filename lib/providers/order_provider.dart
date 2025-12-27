@@ -22,6 +22,7 @@ class OrderProvider extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
     try {
       _orderPreview = await _orderService.previewOrder(addressId: addressId, itemIds: itemIds);
     } catch (e) {
@@ -43,6 +44,7 @@ class OrderProvider extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
     try {
       final result = await _orderService.createOrder(
         addressId: addressId,
@@ -50,8 +52,11 @@ class OrderProvider extends ChangeNotifier {
         paymentMethod: paymentMethod,
         note: note,
       );
-      // Refresh list ngầm
+
+      // COD sẽ có order ngay -> refresh list
+      // VNPAY thì order chỉ xuất hiện sau khi finalize -> refresh cũng không sao
       fetchMyOrders();
+
       return result;
     } catch (e) {
       _errorMessage = e.toString();
@@ -69,6 +74,7 @@ class OrderProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
     }
+
     try {
       _myOrders = await _orderService.getMyOrders();
     } catch (e) {
@@ -79,12 +85,30 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  // Check Status (Helper cho polling)
+  // Polling theo orderId (COD / hoặc dùng khi bạn đã có id)
   Future<bool> checkOrderStatus(String orderId) async {
     try {
       final order = await _orderService.getOrderDetail(orderId);
-      // Nếu trạng thái là PAID -> return true
-      return order.paymentStatus == 'PAID' || order.status == 'PAID';
+      return order.paymentStatus == 'PAID' || order.status == 'PAID' || order.status == 'COMPLETED';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ✅ Polling theo sessionCode (VNPAY - KHÔNG sửa BE)
+  // Vì VNPAY create chưa có order, order chỉ xuất hiện sau finalize.
+  Future<bool> checkPaidBySessionCode(String sessionCode) async {
+    try {
+      final list = await _orderService.getMyOrders(page: 1, limit: 50);
+
+      for (final o in list) {
+        if (o.sessionCode == sessionCode) {
+          if (o.paymentStatus == 'PAID' || o.status == 'PAID' || o.status == 'COMPLETED') {
+            return true;
+          }
+        }
+      }
+      return false;
     } catch (_) {
       return false;
     }
